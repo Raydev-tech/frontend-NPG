@@ -1,0 +1,148 @@
+const products = [
+  {
+    id: 1,
+    name: "NPG Signature Tee",
+    category: "T-Shirts",
+    price: 18000,
+    oldPrice: null,
+    image: "/cloth1.jpeg",
+    tag: "New",
+    description:
+      "Premium NPG signature tee designed with a clean streetwear look and comfortable everyday fit.",
+    inStock: true,
+  },
+  {
+    id: 2,
+    name: "NPG Essential Tee",
+    category: "T-Shirts",
+    price: 16000,
+    oldPrice: null,
+    image: "/cloth2.jpeg",
+    tag: "New",
+    description:
+      "A simple and versatile NPG essential tee made for everyday street style.",
+    inStock: true,
+  },
+  {
+    id: 3,
+    name: "NPG Oversized Hoodie",
+    category: "Hoodies",
+    price: 32000,
+    oldPrice: 38000,
+    image: "/hoddie2.jpeg",
+    tag: "Sale",
+    description:
+      "Oversized NPG hoodie with a relaxed streetwear silhouette and premium everyday feel.",
+    inStock: true,
+  },
+  {
+    id: 4,
+    name: "NPG Baggy Denim",
+    category: "Jeans",
+    price: 35000,
+    oldPrice: null,
+    image: "/jean.jpeg",
+    tag: "Popular",
+    description:
+      "Relaxed baggy denim designed to give your NPG streetwear fit a bold finish.",
+    inStock: true,
+  },
+  {
+    id: 5,
+    name: "NPG Street Hoodie",
+    category: "Hoodies",
+    price: 30000,
+    oldPrice: null,
+    image: "/hoddie1.jpeg",
+    tag: "New",
+    description:
+      "NPG street hoodie built for a relaxed fit, comfort and everyday styling.",
+    inStock: true,
+  },
+  {
+    id: 6,
+    name: "NPG Classic Tee",
+    category: "T-Shirts",
+    price: 15000,
+    oldPrice: null,
+    image: "/cloth3.jpeg",
+    tag: null,
+    description:
+      "Classic NPG tee with a minimal design that works with any everyday outfit.",
+    inStock: true,
+  },
+  {
+    id: 7,
+    name: "NPG Street Cap",
+    category: "Accessories",
+    price: 28000,
+    oldPrice: null,
+    image: "/cap2.jpeg",
+    tag: "New",
+    description:
+      "Complete your NPG streetwear look with the signature NPG street cap.",
+    inStock: true,
+  },
+  {
+    id: 8,
+    name: "NPG Wide Leg Denim",
+    category: "Jeans",
+    price: 38000,
+    oldPrice: 42000,
+    image: "/jean1.png",
+    tag: "Sale",
+    description:
+      "Wide-leg NPG denim created for a relaxed and contemporary streetwear silhouette.",
+    inStock: true,
+  },
+  {
+    id: 9,
+    name: "NPG Street Cap",
+    category: "Accessories",
+    price: 12000,
+    oldPrice: null,
+    image: "/cap1.jpeg",
+    tag: null,
+    description:
+      "Everyday NPG street cap featuring a simple and versatile design.",
+    inStock: true,
+  },
+  {
+    id: 10,
+    name: "NPG Crossbody Bag",
+    category: "Accessories",
+    price: 18000,
+    oldPrice: null,
+    image: "/bag1.jpeg",
+    tag: "New",
+    description:
+      "Compact NPG crossbody bag designed to carry your essentials while keeping your fit clean.",
+    inStock: true,
+  },
+  {
+    id: 11,
+    name: "NPG Heavyweight Tee",
+    category: "T-Shirts",
+    price: 20000,
+    oldPrice: null,
+    image: "/many.jpeg",
+    tag: "Popular",
+    description:
+      "Heavyweight NPG tee designed for a stronger streetwear look and comfortable everyday wear.",
+    inStock: true,
+  },
+  {
+    id: 12,
+    name: "NPG Relaxed Cargo",
+    category: "Pants",
+    price: 30000,
+    oldPrice: null,
+    image: "/images/npg-cargo-2.jpg",
+    tag: null,
+    description:
+      "Relaxed NPG cargo pants designed for everyday movement and modern streetwear styling.",
+    inStock: true,
+  },
+];
+
+export default products;
