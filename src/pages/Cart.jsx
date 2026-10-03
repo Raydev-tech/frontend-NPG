@@ -1,134 +1,60 @@
-import React, { useEffect, useState } from "react";
+import React, { useContext } from "react";
 import {
   ShoppingBag,
   Trash2,
   Plus,
   Minus,
   ArrowLeft,
+  Loader2,
 } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
-import OrderSummary from "./OrderSummary";
+import { Link } from "react-router-dom";
+import { StoreContext } from "../components/context/StoreContext";
+import OrderSummary from "../components/OrderSummary";
 
 const Cart = () => {
-  const navigate = useNavigate();
+  const {
+    products,
+    cartItems,
+    cartLoading,
+    increaseQuantity,
+    decreaseQuantity,
+    removeFromCart,
+    clearCart,
+    getCartCount,
+    getCartAmount,
+  } = useContext(StoreContext);
 
   // ==========================================
-  // LOAD CART FROM LOCAL STORAGE
+  // GET CART PRODUCTS
   // ==========================================
 
-  const [cartItems, setCartItems] = useState(() => {
-    try {
-      const savedCart = localStorage.getItem("npg-cart");
-      return savedCart ? JSON.parse(savedCart) : [];
-    } catch (error) {
-      console.error("Failed to load cart:", error);
-      return [];
-    }
-  });
-
-  // ==========================================
-  // SAVE CART TO LOCAL STORAGE
-  // ==========================================
-
-  useEffect(() => {
-    try {
-      if (cartItems.length === 0) {
-        localStorage.removeItem("npg-cart");
-      } else {
-        localStorage.setItem("npg-cart", JSON.stringify(cartItems));
-      }
-    } catch (error) {
-      console.error("Failed to save cart:", error);
-    }
-  }, [cartItems]);
-
-  // ==========================================
-  // GET PRODUCT ID
-  // ==========================================
-
-  const getProductId = (item) => {
-    return item.id || item._id;
-  };
-
-  // ==========================================
-  // INCREASE QUANTITY
-  // ==========================================
-
-  const increaseQuantity = (id) => {
-    setCartItems((items) =>
-      items.map((item) =>
-        String(getProductId(item)) === String(id)
-          ? {
-              ...item,
-              quantity: Number(item.quantity || 1) + 1,
-            }
-          : item
-      )
-    );
-  };
-
-  // ==========================================
-  // DECREASE QUANTITY
-  // ==========================================
-
-  const decreaseQuantity = (id) => {
-    setCartItems((items) =>
-      items.map((item) =>
-        String(getProductId(item)) === String(id) &&
-        Number(item.quantity || 1) > 1
-          ? {
-              ...item,
-              quantity: Number(item.quantity || 1) - 1,
-            }
-          : item
-      )
-    );
-  };
-
-  // ==========================================
-  // REMOVE ITEM
-  // ==========================================
-
-  const removeItem = (id) => {
-    setCartItems((items) =>
-      items.filter(
+  const cartProducts = Object.entries(
+    cartItems
+  )
+    .map(([productId, quantity]) => {
+      const product = products.find(
         (item) =>
-          String(getProductId(item)) !== String(id)
-      )
-    );
-  };
+          String(item._id) ===
+          String(productId)
+      );
+
+      if (!product) return null;
+
+      return {
+        ...product,
+        quantity: Number(quantity || 1),
+      };
+    })
+    .filter(Boolean);
 
   // ==========================================
-  // CLEAR CART
+  // CALCULATIONS
   // ==========================================
 
-  const clearCart = () => {
-    setCartItems([]);
-    localStorage.removeItem("npg-cart");
-  };
+  const subtotal = getCartAmount();
 
-  // ==========================================
-  // SUBTOTAL
-  // ==========================================
-
-  const subtotal = cartItems.reduce(
-    (total, item) =>
-      total +
-      Number(item.price || 0) *
-        Number(item.quantity || 1),
-    0
-  );
-
-  // ==========================================
-  // SHIPPING
-  // SAME CALCULATION USED BY ORDER SUMMARY
-  // ==========================================
-
+  // Your NPG shipping fee
   const shipping = subtotal > 0 ? 1500 : 0;
-
-  // ==========================================
-  // FINAL TOTAL
-  // ==========================================
 
   const total = subtotal + shipping;
 
@@ -136,7 +62,10 @@ const Cart = () => {
   // EMPTY CART
   // ==========================================
 
-  if (cartItems.length === 0) {
+  if (
+    !cartLoading &&
+    cartProducts.length === 0
+  ) {
     return (
       <main className="min-h-screen bg-[#100704] px-5 pb-20 pt-32 text-white">
         <div className="mx-auto flex min-h-[60vh] max-w-4xl flex-col items-center justify-center text-center">
@@ -157,8 +86,10 @@ const Cart = () => {
           </h1>
 
           <p className="mt-5 max-w-md text-sm leading-7 text-white/40">
-            You haven't added anything to your cart yet.
-            Explore our collection and find something you love.
+            You haven't added anything to
+            your cart yet. Explore our
+            collection and find something
+            you love.
           </p>
 
           <Link
@@ -174,6 +105,29 @@ const Cart = () => {
   }
 
   // ==========================================
+  // LOADING
+  // ==========================================
+
+  if (cartLoading) {
+    return (
+      <main className="min-h-screen bg-[#100704] px-5 pb-20 pt-32 text-white">
+        <div className="flex min-h-[60vh] items-center justify-center">
+          <div className="flex items-center gap-3 text-[#e59a38]">
+            <Loader2
+              size={22}
+              className="animate-spin"
+            />
+
+            <span className="text-xs font-bold uppercase tracking-[0.2em]">
+              Loading Cart...
+            </span>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  // ==========================================
   // CART PAGE
   // ==========================================
 
@@ -182,6 +136,7 @@ const Cart = () => {
       <div className="mx-auto max-w-7xl">
 
         {/* HEADER */}
+
         <div className="mb-12 flex flex-col justify-between gap-5 border-b border-white/10 pb-8 md:flex-row md:items-end">
 
           <div>
@@ -194,13 +149,16 @@ const Cart = () => {
             </h1>
 
             <p className="mt-3 text-sm text-white/40">
-              {cartItems.length}{" "}
-              {cartItems.length === 1 ? "item" : "items"}{" "}
+              {getCartCount()}{" "}
+              {getCartCount() === 1
+                ? "item"
+                : "items"}{" "}
               in your bag
             </p>
           </div>
 
           {/* CLEAR CART */}
+
           <button
             onClick={clearCart}
             className="flex w-fit items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-white/40 transition hover:text-red-400"
@@ -211,158 +169,183 @@ const Cart = () => {
         </div>
 
         {/* CONTENT */}
+
         <div className="grid grid-cols-1 gap-10 lg:grid-cols-[1fr_400px]">
 
           {/* CART ITEMS */}
+
           <div className="space-y-4">
 
-            {cartItems.map((item) => {
-              const productId = getProductId(item);
+            {cartProducts.map(
+              (item) => {
+                const productId =
+                  item._id;
 
-              const image = Array.isArray(item.image)
-                ? item.image[0]
-                : item.image;
+                const image =
+                  Array.isArray(
+                    item.image
+                  )
+                    ? item.image[0]
+                    : item.image;
 
-              const itemQuantity = Number(
-                item.quantity || 1
-              );
+                const quantity =
+                  Number(
+                    item.quantity || 1
+                  );
 
-              const itemPrice = Number(
-                item.price || 0
-              );
+                const price =
+                  Number(
+                    item.offerPrice ??
+                      item.price ??
+                      0
+                  );
 
-              const itemTotal =
-                itemPrice * itemQuantity;
+                const itemTotal =
+                  price * quantity;
 
-              return (
-                <div
-                  key={productId}
-                  className="border border-white/10 bg-[#140806] p-4 md:p-5"
-                >
-                  <div className="flex gap-5">
+                return (
+                  <div
+                    key={productId}
+                    className="border border-white/10 bg-[#140806] p-4 md:p-5"
+                  >
+                    <div className="flex gap-5">
 
-                    {/* PRODUCT IMAGE */}
-                    <div className="h-32 w-24 flex-shrink-0 overflow-hidden bg-[#1a0b07] md:h-40 md:w-32">
-                      <img
-                        src={image}
-                        alt={item.name}
-                        className="h-full w-full object-cover"
-                      />
-                    </div>
+                      {/* IMAGE */}
 
-                    {/* PRODUCT DETAILS */}
-                    <div className="flex min-w-0 flex-1 flex-col justify-between">
-
-                      <div>
-                        <div className="flex items-start justify-between gap-4">
-
-                          <div>
-                            <h2 className="text-sm font-black uppercase md:text-base">
-                              {item.name}
-                            </h2>
-
-                            {item.category && (
-                              <p className="mt-1 text-[9px] uppercase tracking-[0.2em] text-white/30">
-                                {item.category}
-                              </p>
-                            )}
-
-                            {item.size && (
-                              <p className="mt-2 text-[10px] uppercase tracking-wider text-white/50">
-                                Size:{" "}
-                                <span className="text-white">
-                                  {item.size}
-                                </span>
-                              </p>
-                            )}
-                          </div>
-
-                          {/* REMOVE */}
-                          <button
-                            onClick={() =>
-                              removeItem(productId)
-                            }
-                            className="text-white/30 transition hover:text-red-400"
-                            aria-label="Remove item"
-                          >
-                            <Trash2 size={17} />
-                          </button>
-
-                        </div>
+                      <div className="h-32 w-24 flex-shrink-0 overflow-hidden bg-[#1a0b07] md:h-40 md:w-32">
+                        <img
+                          src={image}
+                          alt={
+                            item.name ||
+                            "Product"
+                          }
+                          className="h-full w-full object-cover"
+                        />
                       </div>
 
-                      <div className="mt-5 flex flex-wrap items-end justify-between gap-4">
+                      {/* DETAILS */}
 
-                        {/* PRICE */}
+                      <div className="flex min-w-0 flex-1 flex-col justify-between">
+
                         <div>
-                          <p className="text-xs text-white/40">
-                            Unit Price
-                          </p>
+                          <div className="flex items-start justify-between gap-4">
 
-                          <p className="mt-1 text-sm font-bold text-[#e59a38]">
-                            ₦{itemPrice.toLocaleString()}
-                          </p>
+                            <div>
+                              <h2 className="text-sm font-black uppercase md:text-base">
+                                {item.name}
+                              </h2>
+
+                              {item.category && (
+                                <p className="mt-1 text-[9px] uppercase tracking-[0.2em] text-white/30">
+                                  {
+                                    item.category
+                                  }
+                                </p>
+                              )}
+                            </div>
+
+                            {/* REMOVE */}
+
+                            <button
+                              onClick={() =>
+                                removeFromCart(
+                                  productId
+                                )
+                              }
+                              className="text-white/30 transition hover:text-red-400"
+                              aria-label="Remove item"
+                            >
+                              <Trash2
+                                size={17}
+                              />
+                            </button>
+
+                          </div>
                         </div>
 
-                        {/* QUANTITY */}
-                        <div className="flex items-center border border-white/20">
+                        <div className="mt-5 flex flex-wrap items-end justify-between gap-4">
 
-                          <button
-                            onClick={() =>
-                              decreaseQuantity(productId)
-                            }
-                            className="grid h-9 w-9 place-items-center transition hover:bg-white hover:text-black"
-                            aria-label="Decrease quantity"
-                          >
-                            <Minus size={13} />
-                          </button>
+                          {/* PRICE */}
 
-                          <span className="grid h-9 w-10 place-items-center border-x border-white/20 text-xs font-bold">
-                            {itemQuantity}
-                          </span>
+                          <div>
+                            <p className="text-xs text-white/40">
+                              Unit Price
+                            </p>
 
-                          <button
-                            onClick={() =>
-                              increaseQuantity(productId)
-                            }
-                            className="grid h-9 w-9 place-items-center transition hover:bg-white hover:text-black"
-                            aria-label="Increase quantity"
-                          >
-                            <Plus size={13} />
-                          </button>
+                            <p className="mt-1 text-sm font-bold text-[#e59a38]">
+                              ₦
+                              {price.toLocaleString()}
+                            </p>
+                          </div>
+
+                          {/* QUANTITY */}
+
+                          <div className="flex items-center border border-white/20">
+
+                            <button
+                              onClick={() =>
+                                decreaseQuantity(
+                                  productId
+                                )
+                              }
+                              className="grid h-9 w-9 place-items-center transition hover:bg-white hover:text-black"
+                              aria-label="Decrease quantity"
+                            >
+                              <Minus
+                                size={13}
+                              />
+                            </button>
+
+                            <span className="grid h-9 w-10 place-items-center border-x border-white/20 text-xs font-bold">
+                              {quantity}
+                            </span>
+
+                            <button
+                              onClick={() =>
+                                increaseQuantity(
+                                  productId
+                                )
+                              }
+                              className="grid h-9 w-9 place-items-center transition hover:bg-white hover:text-black"
+                              aria-label="Increase quantity"
+                            >
+                              <Plus
+                                size={13}
+                              />
+                            </button>
+
+                          </div>
+
+                          {/* TOTAL */}
+
+                          <div className="text-right">
+                            <p className="text-xs text-white/40">
+                              Total
+                            </p>
+
+                            <p className="mt-1 text-sm font-bold">
+                              ₦
+                              {itemTotal.toLocaleString()}
+                            </p>
+                          </div>
 
                         </div>
-
-                        {/* TOTAL */}
-                        <div className="text-right">
-                          <p className="text-xs text-white/40">
-                            Total
-                          </p>
-
-                          <p className="mt-1 text-sm font-bold">
-                            ₦{itemTotal.toLocaleString()}
-                          </p>
-                        </div>
-
                       </div>
                     </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              }
+            )}
 
           </div>
 
           {/* ORDER SUMMARY */}
+
           <OrderSummary
             subtotal={subtotal}
             shipping={shipping}
             total={total}
-            cartCount={cartItems.reduce(
-              (count, item) =>
-                count + Number(item.quantity || 1),
-              0
-            )}
+            cartCount={getCartCount()}
             clearCart={clearCart}
           />
 

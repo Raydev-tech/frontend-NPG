@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   ArrowLeft,
   LockKeyhole,
@@ -12,27 +12,210 @@ import toast from "react-hot-toast";
 export default function Login() {
   const navigate = useNavigate();
 
+  // ==========================================
+  // PREVENT LOGGED-IN USER FROM OPENING LOGIN
+  // ==========================================
+  useEffect(() => {
+    const storedUser =
+      localStorage.getItem("npg-user") ||
+      sessionStorage.getItem("npg-user");
+
+    const storedToken =
+      localStorage.getItem("npg-token") ||
+      sessionStorage.getItem("npg-token");
+
+    // If user is already logged in, send them home
+    if (storedUser && storedToken) {
+      navigate("/", { replace: true });
+    }
+  }, [navigate]);
+
+  // ================= API URL =================
+  const url = "https://npg-store.vercel.app";
+
+  // ================= STATES =================
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
 
-  // SHOW / HIDE PASSWORD
+  // Show / hide password
   const [showPassword, setShowPassword] = useState(false);
 
-  const handleSubmit = (e) => {
+  // Loading
+  const [loading, setLoading] = useState(false);
+
+  // ================= LOGIN =================
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Add your real login/API logic here
+    // Validate email
+    if (!email.trim()) {
+      toast.error("Please enter your email.");
+      return;
+    }
 
-    toast.success("Welcome back to NPG!", {
-      position: "top-center",
-      duration: 2000,
-    });
+    // Validate password
+    if (!password) {
+      toast.error("Please enter your password.");
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      toast.loading("Signing you in...", {
+        id: "login",
+      });
+
+      // ================= API CALL =================
+      const response = await fetch(`${url}/api/user/login`, {
+        method: "POST",
+
+        headers: {
+          "Content-Type": "application/json",
+        },
+
+        body: JSON.stringify({
+          email: email.trim().toLowerCase(),
+          password: password,
+        }),
+      });
+
+      // Check HTTP response
+      if (!response.ok) {
+        let errorData = {};
+
+        try {
+          errorData = await response.json();
+        } catch {
+          errorData = {};
+        }
+
+        toast.dismiss("login");
+
+        toast.error(
+          errorData.message ||
+            "Login failed. Please check your details.",
+          {
+            position: "top-center",
+            duration: 3000,
+          }
+        );
+
+        return;
+      }
+
+      // Get response
+      const data = await response.json();
+
+      console.log("Login response:", data);
+
+      // Remove loading toast
+      toast.dismiss("login");
+
+      // ================= LOGIN SUCCESS =================
+      if (data.success) {
+        // Make sure token exists
+        if (!data.token) {
+          toast.error(
+            "Login succeeded but no token was received.",
+            {
+              position: "top-center",
+              duration: 3000,
+            }
+          );
+
+          return;
+        }
+
+        // Make sure user exists
+        if (!data.user) {
+          toast.error(
+            "Login succeeded but user information was not received.",
+            {
+              position: "top-center",
+              duration: 3000,
+            }
+          );
+
+          return;
+        }
+
+        // ================= SAVE TOKEN =================
+        if (rememberMe) {
+          // Persistent login
+          localStorage.setItem("npg-token", data.token);
+
+          localStorage.setItem(
+            "npg-user",
+            JSON.stringify(data.user)
+          );
+
+          // Remove session copies
+          sessionStorage.removeItem("npg-token");
+          sessionStorage.removeItem("npg-user");
+        } else {
+          // Session login
+          sessionStorage.setItem("npg-token", data.token);
+
+          sessionStorage.setItem(
+            "npg-user",
+            JSON.stringify(data.user)
+          );
+
+          // Remove persistent copies
+          localStorage.removeItem("npg-token");
+          localStorage.removeItem("npg-user");
+        }
+
+        // Tell Navbar and other components
+        // that authentication has changed
+        window.dispatchEvent(
+          new Event("npg-auth-change")
+        );
+
+        // Success message
+        toast.success(
+          data.message || "Welcome back to NPG!",
+          {
+            position: "top-center",
+            duration: 2000,
+          }
+        );
+
+        // Redirect home
+        setTimeout(() => {
+          navigate("/", { replace: true });
+        }, 1500);
+      } else {
+        // ================= LOGIN FAILED =================
+        toast.error(
+          data.message || "Invalid email or password.",
+          {
+            position: "top-center",
+            duration: 3000,
+          }
+        );
+      }
+    } catch (error) {
+      console.error("Login error:", error);
+
+      toast.dismiss("login");
+
+      toast.error(
+        "Unable to connect to the server. Please try again.",
+        {
+          position: "top-center",
+          duration: 3000,
+        }
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <main className="min-h-screen bg-[#100704] text-white">
-
       <div className="flex min-h-screen w-full">
 
         {/* =================================================
@@ -41,8 +224,7 @@ export default function Login() {
 
         <div className="relative hidden w-1/2 overflow-hidden lg:block">
 
-          {/* REAL FASHION IMAGE */}
-
+          {/* FASHION IMAGE */}
           <img
             src="/CEO.jpeg"
             alt="NPG Fashion"
@@ -50,32 +232,26 @@ export default function Login() {
           />
 
           {/* DARK OVERLAY */}
-
           <div className="absolute inset-0 bg-[#100704]/65" />
 
           {/* GOLD GLOW */}
-
           <div className="absolute right-[-150px] top-1/2 h-[400px] w-[400px] -translate-y-1/2 rounded-full bg-[#e59a38]/10 blur-[130px]" />
 
-          {/* NPG BRAND */}
-
+          {/* BRAND */}
           <div className="absolute inset-0 flex flex-col justify-between p-12">
 
             {/* BACK HOME */}
-
             <button
+              type="button"
               onClick={() => navigate("/")}
               className="flex w-fit items-center gap-3 text-[9px] font-black uppercase tracking-[0.25em] text-white/60 transition hover:text-[#e59a38]"
             >
               <ArrowLeft size={15} />
-
               Back Home
             </button>
 
-            {/* BRAND */}
-
+            {/* BRAND TEXT */}
             <div>
-
               <p className="mb-5 text-[9px] font-bold uppercase tracking-[0.4em] text-[#e59a38]">
                 Nothing Pass God
               </p>
@@ -89,15 +265,12 @@ export default function Login() {
                 with confidence. Your style. Your
                 statement.
               </p>
-
             </div>
 
             {/* COPYRIGHT */}
-
             <p className="text-[8px] font-bold uppercase tracking-[0.3em] text-white/30">
               NPG © {new Date().getFullYear()}
             </p>
-
           </div>
         </div>
 
@@ -108,11 +281,8 @@ export default function Login() {
         <div className="relative flex min-h-screen w-full items-center justify-center px-6 py-12 lg:w-1/2">
 
           {/* BACKGROUND GLOW */}
-
           <div className="pointer-events-none absolute inset-0">
-
             <div className="absolute left-1/2 top-1/4 h-[300px] w-[300px] -translate-x-1/2 rounded-full bg-[#e59a38]/[0.05] blur-[120px]" />
-
           </div>
 
           <div className="relative z-10 w-full max-w-md">
@@ -129,12 +299,10 @@ export default function Login() {
                 className="h-full w-full object-cover"
               />
 
-              {/* IMAGE OVERLAY */}
-
+              {/* OVERLAY */}
               <div className="absolute inset-0 bg-[#100704]/45" />
 
-              {/* MOBILE NPG */}
-
+              {/* MOBILE BRAND */}
               <div className="absolute inset-0 flex flex-col items-center justify-center">
 
                 <p className="mb-2 text-[8px] font-bold uppercase tracking-[0.4em] text-[#e59a38]">
@@ -146,7 +314,6 @@ export default function Login() {
                 </h1>
 
               </div>
-
             </div>
 
             {/* =================================================
@@ -162,7 +329,6 @@ export default function Login() {
               <h2 className="text-5xl font-black uppercase leading-[0.85] tracking-[-0.06em] sm:text-6xl">
                 Sign
                 <br />
-
                 <span className="text-white/20">
                   In.
                 </span>
@@ -184,10 +350,7 @@ export default function Login() {
               className="w-full"
             >
 
-              {/* =================================================
-                  EMAIL
-              ================================================= */}
-
+              {/* EMAIL */}
               <div className="mb-5">
 
                 <label
@@ -206,6 +369,7 @@ export default function Login() {
 
                   <input
                     id="email"
+                    name="email"
                     type="email"
                     value={email}
                     onChange={(e) =>
@@ -213,17 +377,14 @@ export default function Login() {
                     }
                     placeholder="Enter your email"
                     className="h-full w-full bg-transparent text-sm text-white outline-none placeholder:text-white/20"
+                    autoComplete="email"
                     required
                   />
 
                 </div>
-
               </div>
 
-              {/* =================================================
-                  PASSWORD
-              ================================================= */}
-
+              {/* PASSWORD */}
               <div className="mb-5">
 
                 <label
@@ -235,29 +396,30 @@ export default function Login() {
 
                 <div className="flex h-14 items-center gap-3 border border-white/10 bg-[#160a06] px-5 transition focus-within:border-[#e59a38]/60">
 
-                  {/* LOCK ICON */}
-
                   <LockKeyhole
                     size={16}
                     className="shrink-0 text-[#e59a38]"
                   />
 
-                  {/* PASSWORD INPUT */}
-
                   <input
                     id="password"
-                    type={showPassword ? "text" : "password"}
+                    name="password"
+                    type={
+                      showPassword
+                        ? "text"
+                        : "password"
+                    }
                     value={password}
                     onChange={(e) =>
                       setPassword(e.target.value)
                     }
                     placeholder="Enter your password"
                     className="h-full w-full bg-transparent text-sm text-white outline-none placeholder:text-white/20"
+                    autoComplete="current-password"
                     required
                   />
 
-                  {/* SHOW / HIDE BUTTON */}
-
+                  {/* SHOW / HIDE PASSWORD */}
                   <button
                     type="button"
                     onClick={() =>
@@ -278,13 +440,9 @@ export default function Login() {
                   </button>
 
                 </div>
-
               </div>
 
-              {/* =================================================
-                  REMEMBER / FORGOT
-              ================================================= */}
-
+              {/* REMEMBER ME / FORGOT PASSWORD */}
               <div className="mb-8 flex items-center justify-between">
 
                 <label className="flex cursor-pointer items-center gap-3">
@@ -318,28 +476,32 @@ export default function Login() {
 
               </div>
 
-              {/* =================================================
-                  LOGIN BUTTON
-              ================================================= */}
-
+              {/* LOGIN BUTTON */}
               <button
                 type="submit"
-                className="group flex h-14 w-full items-center justify-center gap-4 bg-[#e59a38] text-[9px] font-black uppercase tracking-[0.25em] text-black transition duration-300 hover:bg-white"
+                disabled={loading}
+                className={`group flex h-14 w-full items-center justify-center gap-4 text-[9px] font-black uppercase tracking-[0.25em] text-black transition duration-300 ${
+                  loading
+                    ? "cursor-not-allowed bg-[#e59a38]/50"
+                    : "bg-[#e59a38] hover:bg-white"
+                }`}
               >
-                Sign In
+                {loading ? (
+                  "Signing In..."
+                ) : (
+                  <>
+                    Sign In
 
-                <ArrowLeft
-                  size={15}
-                  className="rotate-180 transition-transform duration-300 group-hover:translate-x-1"
-                />
+                    <ArrowLeft
+                      size={15}
+                      className="rotate-180 transition-transform duration-300 group-hover:translate-x-1"
+                    />
+                  </>
+                )}
               </button>
 
-              {/* =================================================
-                  SIGN UP
-              ================================================= */}
-
+              {/* CREATE ACCOUNT */}
               <p className="mt-7 text-center text-[10px] text-white/30">
-
                 Don't have an account?
 
                 <button
@@ -351,15 +513,11 @@ export default function Login() {
                 >
                   Create Account
                 </button>
-
               </p>
 
             </form>
 
-            {/* =================================================
-                BOTTOM BRAND
-            ================================================= */}
-
+            {/* FOOTER */}
             <div className="mt-12 border-t border-white/10 pt-6 text-center">
 
               <p className="text-[8px] font-bold uppercase tracking-[0.3em] text-white/20">
@@ -370,7 +528,6 @@ export default function Login() {
 
           </div>
         </div>
-
       </div>
     </main>
   );
