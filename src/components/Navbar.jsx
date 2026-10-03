@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
-
 import {
   UserRound,
   ShoppingBag,
@@ -10,7 +9,6 @@ import {
   LogOut,
   User,
 } from "lucide-react";
-
 import AOS from "aos";
 import "aos/dist/aos.css";
 
@@ -21,17 +19,16 @@ export default function Navbar({ cartCount = 0 }) {
 
   const navigate = useNavigate();
 
-  // ==============================
+  // ==========================================
   // GET LOGGED-IN USER
-  // ==============================
+  // ==========================================
   useEffect(() => {
     const getUser = () => {
       try {
-        // Try common localStorage keys
+        // Your Login.jsx saves the user here
         const storedUser =
-          localStorage.getItem("user") ||
-          localStorage.getItem("userInfo") ||
-          localStorage.getItem("currentUser");
+          localStorage.getItem("npg-user") ||
+          sessionStorage.getItem("npg-user");
 
         if (storedUser) {
           const parsedUser = JSON.parse(storedUser);
@@ -40,24 +37,29 @@ export default function Navbar({ cartCount = 0 }) {
           setUser(null);
         }
       } catch (error) {
-        console.error("Error reading user:", error);
+        console.error("Error reading logged-in user:", error);
         setUser(null);
       }
     };
 
+    // Check when Navbar loads
     getUser();
 
-    // Listen for login/logout changes
+    // Listen for storage changes from other tabs
     window.addEventListener("storage", getUser);
+
+    // Custom event for login/logout in the same tab
+    window.addEventListener("npg-auth-change", getUser);
 
     return () => {
       window.removeEventListener("storage", getUser);
+      window.removeEventListener("npg-auth-change", getUser);
     };
   }, []);
 
-  // ==============================
+  // ==========================================
   // AOS
-  // ==============================
+  // ==========================================
   useEffect(() => {
     AOS.init({
       duration: 800,
@@ -67,9 +69,9 @@ export default function Navbar({ cartCount = 0 }) {
     });
   }, []);
 
-  // ==============================
+  // ==========================================
   // NAV LINKS
-  // ==============================
+  // ==========================================
   const navLinks = [
     {
       name: "Shop",
@@ -85,25 +87,32 @@ export default function Navbar({ cartCount = 0 }) {
     },
   ];
 
-  // ==============================
+  // ==========================================
   // LOGOUT
-  // ==============================
+  // ==========================================
   const handleLogout = () => {
-    localStorage.removeItem("user");
-    localStorage.removeItem("userInfo");
-    localStorage.removeItem("currentUser");
-    localStorage.removeItem("token");
+    // Remove authentication data
+    localStorage.removeItem("npg-user");
+    localStorage.removeItem("npg-token");
 
+    sessionStorage.removeItem("npg-user");
+    sessionStorage.removeItem("npg-token");
+
+    // Reset UI
     setUser(null);
     setUserMenuOpen(false);
     setMenuOpen(false);
 
+    // Tell Navbar/auth listeners that authentication changed
+    window.dispatchEvent(new Event("npg-auth-change"));
+
+    // Go to login
     navigate("/login");
   };
 
-  // ==============================
+  // ==========================================
   // GET USER NAME
-  // ==============================
+  // ==========================================
   const getUserName = () => {
     if (!user) return "";
 
@@ -117,9 +126,9 @@ export default function Navbar({ cartCount = 0 }) {
     );
   };
 
-  // ==============================
-  // GET FIRST LETTER
-  // ==============================
+  // ==========================================
+  // GET USER INITIAL
+  // ==========================================
   const getUserInitial = () => {
     const name = getUserName();
 
@@ -159,7 +168,10 @@ export default function Navbar({ cartCount = 0 }) {
         ====================================================== */}
         <Link
           to="/"
-          onClick={() => setMenuOpen(false)}
+          onClick={() => {
+            setMenuOpen(false);
+            setUserMenuOpen(false);
+          }}
           className="group flex items-center"
         >
           <img
@@ -201,13 +213,11 @@ export default function Navbar({ cartCount = 0 }) {
                 py-2
                 transition
                 duration-300
-
                 ${
                   isActive
                     ? "text-[#e59a38]"
                     : "text-white/80 hover:text-[#e59a38]"
                 }
-
                 after:absolute
                 after:bottom-0
                 after:left-0
@@ -215,7 +225,6 @@ export default function Navbar({ cartCount = 0 }) {
                 after:bg-[#e59a38]
                 after:transition-all
                 after:duration-300
-
                 ${
                   isActive
                     ? "after:w-full"
@@ -231,21 +240,15 @@ export default function Navbar({ cartCount = 0 }) {
         {/* =====================================================
             RIGHT SIDE
         ====================================================== */}
-        <div
-          className="
-            flex
-            items-center
-            gap-1
-            md:gap-2
-          "
-        >
+        <div className="flex items-center gap-1 md:gap-2">
+
           {/* =====================================================
               USER
           ====================================================== */}
-
           {user ? (
-            // ================= LOGGED IN USER =================
             <div className="relative">
+
+              {/* USER BUTTON */}
               <button
                 onClick={() => setUserMenuOpen(!userMenuOpen)}
                 aria-label="User menu"
@@ -296,7 +299,9 @@ export default function Navbar({ cartCount = 0 }) {
                 </span>
               </button>
 
-              {/* ================= USER DROPDOWN ================= */}
+              {/* =====================================================
+                  USER DROPDOWN
+              ====================================================== */}
               {userMenuOpen && (
                 <div
                   className="
@@ -366,7 +371,7 @@ export default function Navbar({ cartCount = 0 }) {
                     onClick={() => setUserMenuOpen(false)}
                     className="
                       flex
-                      items-center
+                      items-center cursor-pointer
                       gap-3
                       px-4
                       py-3
@@ -388,7 +393,7 @@ export default function Navbar({ cartCount = 0 }) {
                   <button
                     onClick={handleLogout}
                     className="
-                      flex
+                      flex cursor-pointer
                       w-full
                       items-center
                       gap-3
@@ -413,14 +418,14 @@ export default function Navbar({ cartCount = 0 }) {
               )}
             </div>
           ) : (
-            // ================= NOT LOGGED IN =================
+            /* NOT LOGGED IN */
             <Link
               to="/login"
               aria-label="Login"
               className="
                 group
                 flex
-                items-center
+                items-center cursor-pointer
                 gap-2
                 rounded-full
                 px-2
@@ -434,7 +439,7 @@ export default function Navbar({ cartCount = 0 }) {
                 strokeWidth={1.5}
                 className="
                   transition
-                  duration-300
+                  duration-300 cursor-pointer
                   group-hover:text-[#e59a38]
                 "
               />
@@ -469,7 +474,7 @@ export default function Navbar({ cartCount = 0 }) {
                 w-10
                 place-items-center
                 rounded-full
-                transition
+                transition cursor-pointer
                 hover:bg-[#e59a38]/10
               "
             >
@@ -478,7 +483,7 @@ export default function Navbar({ cartCount = 0 }) {
                 strokeWidth={1.5}
                 className="
                   transition
-                  duration-300
+                  duration-300 cursor-pointer
                   group-hover:text-[#e59a38]
                 "
               />
@@ -498,7 +503,7 @@ export default function Navbar({ cartCount = 0 }) {
               h-10
               w-10
               place-items-center
-              rounded-full
+              rounded-full cursor-pointer
               transition
               hover:bg-[#e59a38]/10
             "
@@ -508,7 +513,7 @@ export default function Navbar({ cartCount = 0 }) {
               strokeWidth={1.5}
               className="
                 transition
-                duration-300
+                duration-300 cursor-pointer
                 group-hover:text-[#e59a38]
               "
             />
@@ -577,7 +582,6 @@ export default function Navbar({ cartCount = 0 }) {
           transition-all
           duration-500
           md:hidden
-
           ${
             menuOpen
               ? "visible opacity-100"
@@ -653,7 +657,6 @@ export default function Navbar({ cartCount = 0 }) {
                   uppercase
                   tracking-tight
                   transition
-
                   ${
                     isActive
                       ? "text-[#e59a38]"
@@ -679,7 +682,7 @@ export default function Navbar({ cartCount = 0 }) {
             {/* MOBILE ORDERS */}
             {user && (
               <Link
-                to="/orders"
+                to="/userorder"
                 onClick={() => setMenuOpen(false)}
                 className="
                   flex
@@ -752,6 +755,7 @@ export default function Navbar({ cartCount = 0 }) {
                 </div>
 
                 <div className="mt-4 flex gap-3">
+                  {/* PROFILE */}
                   <Link
                     to="/profile"
                     onClick={() => setMenuOpen(false)}
@@ -775,6 +779,7 @@ export default function Navbar({ cartCount = 0 }) {
                     Profile
                   </Link>
 
+                  {/* LOGOUT */}
                   <button
                     onClick={handleLogout}
                     className="

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useContext, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   ArrowLeft,
@@ -6,26 +6,45 @@ import {
   Star,
 } from "lucide-react";
 import toast from "react-hot-toast";
-import ProductCard from "../../components/ProductCard";
-import products from "../../data/products";
 
-const Product = ({ addToCart }) => {
+import ProductCard from "../../components/ProductCard";
+import { StoreContext } from "../../components/context/StoreContext";
+
+const Product = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+
+  // ==========================================
+  // STORE CONTEXT
+  // ==========================================
+
+  const {
+    products,
+    productsLoading,
+    addToCart,
+  } = useContext(StoreContext);
+
+  // ==========================================
+  // STATES
+  // ==========================================
 
   const [mainImage, setMainImage] = useState(null);
   const [productData, setProductData] = useState(null);
   const [liked, setLiked] = useState([]);
 
-  // ================================
+  // ==========================================
   // FIND PRODUCT
-  // ================================
+  // ==========================================
 
   useEffect(() => {
+    if (!products || products.length === 0) {
+      return;
+    }
+
     const product = products.find(
       (item) =>
-        item.id?.toString() === id ||
-        item._id?.toString() === id
+        item._id?.toString() === id ||
+        item.id?.toString() === id
     );
 
     setProductData(product || null);
@@ -35,125 +54,164 @@ const Product = ({ addToCart }) => {
         ? product.image[0]
         : product.image;
 
-      setMainImage(image);
+      setMainImage(image || null);
     }
-  }, [id]);
+  }, [id, products]);
 
-  // ================================
+  // ==========================================
   // LIKE PRODUCT
-  // ================================
+  // ==========================================
 
   const toggleLike = (productId) => {
     setLiked((current) =>
       current.includes(productId)
-        ? current.filter((item) => item !== productId)
+        ? current.filter(
+            (item) => item !== productId
+          )
         : [...current, productId]
     );
   };
 
-  // ================================
+  // ==========================================
   // ADD TO CART
-  // ================================
+  // ==========================================
 
   const handleAddToCart = (product = productData) => {
-    if (!product) return;
-
-    if (!addToCart) {
-      toast.error("Cart is not available.");
-      return;
+    if (!product) {
+      toast.error("Product not found.");
+      return false;
     }
 
+    // Check stock
     if (product.inStock === false) {
-      toast.error("🚫 This product is out of stock!", {
-        position: "top-center",
-        duration: 2500,
-      });
+      toast.error(
+        "🚫 This product is out of stock!",
+        {
+          position: "top-center",
+          duration: 2500,
+        }
+      );
 
-      return;
+      return false;
     }
 
-    addToCart(product);
+    // Check cart function
+    if (!addToCart) {
+      toast.error(
+        "Unable to add product to cart.",
+        {
+          position: "top-center",
+          duration: 2500,
+        }
+      );
+
+      return false;
+    }
+
+    // Add using MongoDB _id
+    addToCart(product._id);
+
+    toast.success("Added to cart!", {
+      position: "top-center",
+      duration: 2000,
+    });
+
+    return true;
   };
 
-  // ================================
+  // ==========================================
   // BUY NOW
-  // ================================
+  // ==========================================
 
   const handleBuyNow = () => {
-    if (!productData) return;
+    if (!productData) {
+      return;
+    }
 
-    // ================================
+    // ========================================
     // CHECK LOGIN
-    // ================================
+    // ========================================
 
-    const token = localStorage.getItem("token");
+    const token =
+      localStorage.getItem("npg-token") ||
+      sessionStorage.getItem("npg-token");
 
     if (!token) {
-      toast.error("🔐 Please log in to continue.", {
-        position: "top-center",
-        duration: 2500,
-      });
+      toast.error(
+        "🔐 Please log in to continue.",
+        {
+          position: "top-center",
+          duration: 2500,
+        }
+      );
 
-      // Redirect to login
       navigate("/login");
-
       return;
     }
 
-    // ================================
+    // ========================================
     // CHECK STOCK
-    // ================================
+    // ========================================
 
     if (productData.inStock === false) {
-      toast.error("🚫 This product is out of stock!", {
-        position: "top-center",
-        duration: 2500,
-      });
+      toast.error(
+        "🚫 This product is out of stock!",
+        {
+          position: "top-center",
+          duration: 2500,
+        }
+      );
 
       return;
     }
 
-    // ================================
-    // CHECK CART FUNCTION
-    // ================================
+    // ========================================
+    // ADD TO CART
+    // ========================================
 
-    if (!addToCart) {
-      toast.error("Unable to add product to cart.", {
-        position: "top-center",
-        duration: 2500,
-      });
+    const added =
+      handleAddToCart(productData);
 
-      return;
-    }
-
-    // ================================
-    // ADD PRODUCT TO CART
-    // ================================
-
-    const added = addToCart(productData);
-
-    // ================================
+    // ========================================
     // GO TO CART
-    // ================================
+    // ========================================
 
-    if (added !== false) {
+    if (added) {
       navigate("/cart");
     }
   };
 
-  // ================================
+  // ==========================================
+  // LOADING
+  // ==========================================
+
+  if (productsLoading) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center bg-[#100704] px-6 text-white">
+        <div className="h-10 w-10 animate-spin rounded-full border-2 border-white/10 border-t-[#e59a38]" />
+
+        <p className="mt-6 text-[9px] font-black uppercase tracking-[0.3em] text-white/40">
+          Loading Product...
+        </p>
+      </div>
+    );
+  }
+
+  // ==========================================
   // PRODUCT NOT FOUND
-  // ================================
+  // ==========================================
 
   if (!productData) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-[#100704] px-6 text-white">
-        <h1 className="text-4xl font-black uppercase">
+      <div className="flex min-h-screen flex-col items-center justify-center bg-[#100704] px-6 text-center text-white">
+
+        <h1 className="text-4xl font-black uppercase md:text-5xl">
           Product Not Found
         </h1>
 
-        <p className="mt-3 text-sm text-white/40">
-          The product you are looking for does not exist.
+        <p className="mt-3 max-w-md text-sm leading-7 text-white/40">
+          The product you are looking for does not
+          exist or may have been removed.
         </p>
 
         <button
@@ -164,31 +222,39 @@ const Product = ({ addToCart }) => {
           <ArrowLeft size={15} />
           Back To Shop
         </button>
+
       </div>
     );
   }
 
-  // ================================
+  // ==========================================
   // PRODUCT IMAGES
-  // ================================
+  // ==========================================
 
-  const images = Array.isArray(productData.image)
+  const images = Array.isArray(
+    productData.image
+  )
     ? productData.image
-    : [productData.image];
+    : productData.image
+      ? [productData.image]
+      : [];
 
-  const productId = productData._id || productData.id;
+  const productId =
+    productData._id || productData.id;
 
-  // ================================
+  // ==========================================
   // FEATURED PRODUCTS
-  // ================================
+  // ==========================================
 
   const featuredProducts = products
     .filter((product) => {
       const currentId =
-        productData._id || productData.id;
+        productData._id ||
+        productData.id;
 
       const otherId =
-        product._id || product.id;
+        product._id ||
+        product.id;
 
       return (
         otherId?.toString() !==
@@ -197,9 +263,23 @@ const Product = ({ addToCart }) => {
     })
     .slice(0, 4);
 
-  // ================================
+  // ==========================================
+  // PRICE
+  // ==========================================
+
+  const currentPrice =
+    productData.offerPrice ??
+    productData.price ??
+    0;
+
+  const oldPrice =
+    productData.oldPrice ??
+    productData.originalPrice ??
+    null;
+
+  // ==========================================
   // PAGE
-  // ================================
+  // ==========================================
 
   return (
     <main className="min-h-screen bg-[#100704] text-white">
@@ -209,13 +289,16 @@ const Product = ({ addToCart }) => {
       ================================================= */}
 
       <section className="px-6 pb-20 pt-32 md:px-12 lg:px-16">
+
         <div className="mx-auto max-w-[1500px]">
 
           {/* BACK TO SHOP */}
 
           <button
             type="button"
-            onClick={() => navigate("/shop")}
+            onClick={() =>
+              navigate("/shop")
+            }
             className="mb-8 flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.2em] text-white/40 transition hover:text-[#e59a38]"
           >
             <ArrowLeft size={15} />
@@ -234,18 +317,28 @@ const Product = ({ addToCart }) => {
 
               <div className="relative aspect-[4/5] overflow-hidden bg-[#1a0b07]">
 
-                <img
-                  src={mainImage || images[0]}
-                  alt={productData.name}
-                  className="h-full w-full object-cover"
-                />
+                {mainImage ? (
+                  <img
+                    src={mainImage}
+                    alt={
+                      productData.name ||
+                      "Product"
+                    }
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center text-xs uppercase text-white/30">
+                    No Image
+                  </div>
+                )}
 
                 {/* PRODUCT TAG */}
 
                 {productData.tag && (
                   <span
                     className={`absolute left-4 top-4 px-4 py-2 text-[8px] font-black uppercase tracking-[0.15em] ${
-                      productData.tag === "Sale"
+                      productData.tag ===
+                      "Sale"
                         ? "bg-[#e59a38] text-black"
                         : "bg-[#100704] text-white"
                     }`}
@@ -261,26 +354,31 @@ const Product = ({ addToCart }) => {
               {images.length > 1 && (
                 <div className="mt-4 grid grid-cols-4 gap-3">
 
-                  {images.map((image, index) => (
-                    <button
-                      key={index}
-                      type="button"
-                      onClick={() =>
-                        setMainImage(image)
-                      }
-                      className={`overflow-hidden border transition ${
-                        mainImage === image
-                          ? "border-[#e59a38]"
-                          : "border-white/10 hover:border-white/30"
-                      }`}
-                    >
-                      <img
-                        src={image}
-                        alt={`${productData.name}-${index}`}
-                        className="aspect-square h-full w-full object-cover"
-                      />
-                    </button>
-                  ))}
+                  {images.map(
+                    (image, index) => (
+                      <button
+                        key={`${image}-${index}`}
+                        type="button"
+                        onClick={() =>
+                          setMainImage(
+                            image
+                          )
+                        }
+                        className={`overflow-hidden border transition ${
+                          mainImage ===
+                          image
+                            ? "border-[#e59a38]"
+                            : "border-white/10 hover:border-white/30"
+                        }`}
+                      >
+                        <img
+                          src={image}
+                          alt={`${productData.name}-${index}`}
+                          className="aspect-square h-full w-full object-cover"
+                        />
+                      </button>
+                    )
+                  )}
 
                 </div>
               )}
@@ -299,7 +397,8 @@ const Product = ({ addToCart }) => {
               {/* CATEGORY */}
 
               <p className="mb-4 text-[9px] font-black uppercase tracking-[0.3em] text-[#e59a38]">
-                {productData.category}
+                {productData.category ||
+                  "NPG Collection"}
               </p>
 
               {/* NAME */}
@@ -324,20 +423,20 @@ const Product = ({ addToCart }) => {
 
               {/* PRICE */}
 
-              <div className="mt-6 flex items-center gap-3">
+              <div className="mt-6 flex flex-wrap items-center gap-3">
 
                 <p className="text-3xl font-black">
                   ₦
                   {Number(
-                    productData.price
+                    currentPrice
                   ).toLocaleString()}
                 </p>
 
-                {productData.oldPrice && (
+                {oldPrice && (
                   <p className="text-sm text-white/25 line-through">
                     ₦
                     {Number(
-                      productData.oldPrice
+                      oldPrice
                     ).toLocaleString()}
                   </p>
                 )}
@@ -378,7 +477,8 @@ const Product = ({ addToCart }) => {
                 </p>
 
                 <p className="max-w-xl text-sm leading-7 text-white/50">
-                  {productData.description}
+                  {productData.description ||
+                    "Premium NPG streetwear designed for everyday style and comfort."}
                 </p>
 
               </div>
@@ -389,14 +489,16 @@ const Product = ({ addToCart }) => {
 
                 <span
                   className={`h-2 w-2 rounded-full ${
-                    productData.inStock === false
+                    productData.inStock ===
+                    false
                       ? "bg-red-500"
                       : "bg-green-500"
                   }`}
                 />
 
                 <p className="text-[9px] font-black uppercase tracking-[0.2em] text-white/50">
-                  {productData.inStock === false
+                  {productData.inStock ===
+                  false
                     ? "Out Of Stock"
                     : "In Stock"}
                 </p>
@@ -417,11 +519,15 @@ const Product = ({ addToCart }) => {
                     handleAddToCart()
                   }
                   disabled={
-                    productData.inStock === false
+                    productData.inStock ===
+                    false
                   }
                   className="flex flex-1 items-center justify-center gap-3 bg-[#e59a38] px-6 py-4 text-[9px] font-black uppercase tracking-[0.2em] text-black transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-40"
                 >
-                  <ShoppingBag size={16} />
+                  <ShoppingBag
+                    size={16}
+                  />
+
                   Add To Cart
                 </button>
 
@@ -429,9 +535,12 @@ const Product = ({ addToCart }) => {
 
                 <button
                   type="button"
-                  onClick={handleBuyNow}
+                  onClick={
+                    handleBuyNow
+                  }
                   disabled={
-                    productData.inStock === false
+                    productData.inStock ===
+                    false
                   }
                   className="flex flex-1 items-center justify-center gap-3 border border-white/20 px-6 py-4 text-[9px] font-black uppercase tracking-[0.2em] text-white transition hover:border-[#e59a38] hover:bg-[#e59a38] hover:text-black disabled:cursor-not-allowed disabled:opacity-40"
                 >
@@ -471,9 +580,11 @@ const Product = ({ addToCart }) => {
               </div>
 
             </div>
+
           </div>
 
         </div>
+
       </section>
 
       {/* =================================================
@@ -505,7 +616,9 @@ const Product = ({ addToCart }) => {
 
               <button
                 type="button"
-                onClick={() => navigate("/shop")}
+                onClick={() =>
+                  navigate("/shop")
+                }
                 className="flex items-center gap-3 text-[9px] font-black uppercase tracking-[0.2em] text-white/40 transition hover:text-[#e59a38]"
               >
                 View All
@@ -522,28 +635,38 @@ const Product = ({ addToCart }) => {
 
           {/* FEATURED GRID */}
 
-          <div className="grid grid-cols-2 gap-x-3 gap-y-10 sm:gap-5 lg:grid-cols-3 xl:grid-cols-4">
+          {featuredProducts.length > 0 && (
+            <div className="grid grid-cols-2 gap-x-3 gap-y-10 sm:gap-5 lg:grid-cols-3 xl:grid-cols-4">
 
-            {featuredProducts.map(
-              (product, index) => (
-                <div
-                  key={product._id || product.id}
-                  data-aos="fade-up"
-                  data-aos-delay={
-                    (index % 4) * 100
-                  }
-                >
-                  <ProductCard
-                    product={product}
-                    liked={liked}
-                    toggleLike={toggleLike}
-                    addToCart={handleAddToCart}
-                  />
-                </div>
-              )
-            )}
+              {featuredProducts.map(
+                (product, index) => (
+                  <div
+                    key={
+                      product._id ||
+                      product.id
+                    }
+                    data-aos="fade-up"
+                    data-aos-delay={
+                      (index % 4) *
+                      100
+                    }
+                  >
+                    <ProductCard
+                      product={product}
+                      liked={liked}
+                      toggleLike={
+                        toggleLike
+                      }
+                      addToCart={
+                        handleAddToCart
+                      }
+                    />
+                  </div>
+                )
+              )}
 
-          </div>
+            </div>
+          )}
 
         </div>
 

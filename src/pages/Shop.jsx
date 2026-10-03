@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useContext, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   ArrowRight,
@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 
 import ProductCard from "../components/ProductCard";
-import products from "../data/products";
+import { StoreContext } from "../components/context/StoreContext";
 
 const categories = [
   "All",
@@ -20,12 +20,23 @@ const categories = [
   "Accessories",
 ];
 
-function formatPrice(price) {
-  return `₦${Number(price).toLocaleString()}`;
-}
-
 export default function Shop() {
   const navigate = useNavigate();
+
+  // ==========================================
+  // STORE CONTEXT
+  // ==========================================
+
+  const {
+    products,
+    productsLoading,
+    addToCart: addProductToCart,
+    getCartCount,
+  } = useContext(StoreContext);
+
+  // ==========================================
+  // STATES
+  // ==========================================
 
   const [activeCategory, setActiveCategory] =
     useState("All");
@@ -33,31 +44,40 @@ export default function Shop() {
   const [searchOpen, setSearchOpen] =
     useState(false);
 
-  const [search, setSearch] = useState("");
+  const [search, setSearch] =
+    useState("");
 
-  const [liked, setLiked] = useState([]);
+  const [liked, setLiked] =
+    useState([]);
 
-  const [cart, setCart] = useState([]);
-
-  // ================================
+  // ==========================================
   // FILTER PRODUCTS
-  // ================================
+  // ==========================================
 
   const filteredProducts = products.filter((product) => {
     const categoryMatch =
       activeCategory === "All" ||
       product.category === activeCategory;
 
-    const searchMatch = product.name
-      .toLowerCase()
-      .includes(search.toLowerCase());
+    const productName =
+      product.name?.toLowerCase() || "";
+
+    const productCategory =
+      product.category?.toLowerCase() || "";
+
+    const searchValue =
+      search.toLowerCase().trim();
+
+    const searchMatch =
+      productName.includes(searchValue) ||
+      productCategory.includes(searchValue);
 
     return categoryMatch && searchMatch;
   });
 
-  // ================================
+  // ==========================================
   // LIKE PRODUCT
-  // ================================
+  // ==========================================
 
   const toggleLike = (id) => {
     setLiked((current) =>
@@ -67,24 +87,38 @@ export default function Shop() {
     );
   };
 
-  // ================================
+  // ==========================================
   // ADD TO CART
-  // ================================
+  // ==========================================
 
   const addToCart = (product) => {
-    setCart((current) => [
-      ...current,
-      product,
-    ]);
+    if (!product?._id) {
+      console.error(
+        "Product ID is missing:",
+        product
+      );
+      return;
+    }
+
+    addProductToCart(product._id);
   };
 
-  // ================================
+  // ==========================================
   // CLEAR SEARCH
-  // ================================
+  // ==========================================
 
   const clearSearch = () => {
     setSearch("");
     setSearchOpen(false);
+  };
+
+  // ==========================================
+  // RESET FILTERS
+  // ==========================================
+
+  const resetFilters = () => {
+    setSearch("");
+    setActiveCategory("All");
   };
 
   return (
@@ -152,7 +186,7 @@ export default function Shop() {
                 className="text-[#e59a38]"
               />
 
-              {cart.length} Items In Bag
+              {getCartCount()} Items In Bag
             </button>
           </div>
 
@@ -208,6 +242,15 @@ export default function Shop() {
                   className="w-40 bg-transparent px-2 py-2 text-xs text-white outline-none placeholder:text-white/25 md:w-52"
                 />
 
+                {search && (
+                  <button
+                    onClick={() => setSearch("")}
+                    className="mr-2 text-white/40 transition hover:text-white"
+                  >
+                    <X size={14} />
+                  </button>
+                )}
+
                 <button
                   onClick={clearSearch}
                   className="text-white/40 transition hover:text-white"
@@ -253,7 +296,9 @@ export default function Shop() {
             className="mb-10 flex items-center justify-between border-b border-white/10 pb-5"
           >
             <p className="text-[9px] font-bold uppercase tracking-[0.25em] text-white/35">
-              {filteredProducts.length} Products
+              {productsLoading
+                ? "Loading..."
+                : `${filteredProducts.length} Products`}
             </p>
 
             <p className="text-[9px] font-bold uppercase tracking-[0.25em] text-[#e59a38]">
@@ -261,15 +306,36 @@ export default function Shop() {
             </p>
           </div>
 
-          {/* PRODUCT GRID */}
+          {/* =================================================
+              LOADING
+          ================================================= */}
 
-          {filteredProducts.length > 0 ? (
+          {productsLoading ? (
+
+            <div
+              data-aos="fade-up"
+              className="flex min-h-[350px] flex-col items-center justify-center border border-white/10 text-center"
+            >
+              <div className="h-10 w-10 animate-spin rounded-full border-2 border-white/10 border-t-[#e59a38]" />
+
+              <p className="mt-6 text-[9px] font-bold uppercase tracking-[0.3em] text-white/40">
+                Loading Products...
+              </p>
+            </div>
+
+          ) : filteredProducts.length > 0 ? (
+
+            /* =================================================
+                PRODUCT GRID
+            ================================================= */
+
             <div className="grid grid-cols-2 gap-x-3 gap-y-10 sm:gap-5 lg:grid-cols-3 xl:grid-cols-4">
 
               {filteredProducts.map(
                 (product, index) => (
+
                   <div
-                    key={product.id}
+                    key={product._id}
                     data-aos="fade-up"
                     data-aos-delay={
                       (index % 4) * 100
@@ -283,13 +349,17 @@ export default function Shop() {
                       addToCart={addToCart}
                     />
                   </div>
+
                 )
               )}
 
             </div>
+
           ) : (
 
-            /* EMPTY */
+            /* =================================================
+                EMPTY STATE
+            ================================================= */
 
             <div
               data-aos="fade-up"
@@ -309,10 +379,7 @@ export default function Shop() {
               </p>
 
               <button
-                onClick={() => {
-                  setSearch("");
-                  setActiveCategory("All");
-                }}
+                onClick={resetFilters}
                 className="mt-6 flex items-center gap-3 bg-[#e59a38] px-5 py-3 text-[8px] font-black uppercase tracking-widest text-black transition hover:bg-white"
               >
                 View All Products
@@ -320,6 +387,7 @@ export default function Shop() {
                 <ArrowRight size={14} />
               </button>
             </div>
+
           )}
 
         </div>
@@ -335,6 +403,7 @@ export default function Shop() {
           data-aos="zoom-in"
           className="mx-auto max-w-[1500px] text-center"
         >
+
           <p className="mb-5 text-[9px] font-bold uppercase tracking-[0.35em] text-[#e59a38]">
             Nothing Pass God
           </p>
