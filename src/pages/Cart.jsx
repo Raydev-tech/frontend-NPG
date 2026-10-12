@@ -29,80 +29,42 @@ const Cart = () => {
   // ==========================================
 
   const cartProducts = Object.entries(
-    cartItems
+    cartItems || {}
   )
-    .map(([productId, quantity]) => {
-      const product = products.find(
-        (item) =>
-          String(item._id) ===
-          String(productId)
-      );
+    .map(
+      ([productId, quantity]) => {
+        const product =
+          products.find(
+            (item) =>
+              String(item._id) ===
+              String(productId)
+          );
 
-      if (!product) return null;
+        if (!product) {
+          return null;
+        }
 
-      return {
-        ...product,
-        quantity: Number(quantity || 1),
-      };
-    })
+        return {
+          ...product,
+          quantity:
+            Number(quantity || 1),
+        };
+      }
+    )
     .filter(Boolean);
 
   // ==========================================
   // CALCULATIONS
   // ==========================================
 
-  const subtotal = getCartAmount();
+  const subtotal =
+    getCartAmount();
 
-  // Your NPG shipping fee
-  const shipping = subtotal > 0 ? 1500 : 0;
+  const shipping =
+    subtotal > 0 ? 1500 : 0;
 
-  const total = subtotal + shipping;
-
-  // ==========================================
-  // EMPTY CART
-  // ==========================================
-
-  if (
-    !cartLoading &&
-    cartProducts.length === 0
-  ) {
-    return (
-      <main className="min-h-screen bg-[#100704] px-5 pb-20 pt-32 text-white">
-        <div className="mx-auto flex min-h-[60vh] max-w-4xl flex-col items-center justify-center text-center">
-
-          <div className="mb-8 grid h-24 w-24 place-items-center rounded-full border border-white/10 bg-[#1a0b07]">
-            <ShoppingBag
-              size={32}
-              className="text-[#e59a38]"
-            />
-          </div>
-
-          <p className="mb-3 text-[10px] font-bold uppercase tracking-[0.3em] text-[#e59a38]">
-            Your Bag
-          </p>
-
-          <h1 className="text-4xl font-black uppercase md:text-6xl">
-            Your Cart Is Empty
-          </h1>
-
-          <p className="mt-5 max-w-md text-sm leading-7 text-white/40">
-            You haven't added anything to
-            your cart yet. Explore our
-            collection and find something
-            you love.
-          </p>
-
-          <Link
-            to="/shop"
-            className="mt-8 flex items-center gap-3 bg-[#e59a38] px-8 py-4 text-xs font-black uppercase tracking-[0.2em] text-black transition hover:bg-white"
-          >
-            <ArrowLeft size={15} />
-            Shop NPG
-          </Link>
-        </div>
-      </main>
-    );
-  }
+  const total =
+    subtotal + shipping;
 
   // ==========================================
   // LOADING
@@ -128,6 +90,51 @@ const Cart = () => {
   }
 
   // ==========================================
+  // EMPTY CART
+  // ==========================================
+
+  if (
+    cartProducts.length === 0
+  ) {
+    return (
+      <main className="min-h-screen bg-[#100704] px-5 pb-20 pt-32 text-white">
+        <div className="mx-auto flex min-h-[60vh] max-w-4xl flex-col items-center justify-center text-center">
+          <div className="mb-8 grid h-24 w-24 place-items-center rounded-full border border-white/10 bg-[#1a0b07]">
+            <ShoppingBag
+              size={32}
+              className="text-[#e59a38]"
+            />
+          </div>
+
+          <p className="mb-3 text-[10px] font-bold uppercase tracking-[0.3em] text-[#e59a38]">
+            Your Bag
+          </p>
+
+          <h1 className="text-4xl font-black uppercase md:text-6xl">
+            Your Cart Is Empty
+          </h1>
+
+          <p className="mt-5 max-w-md text-sm leading-7 text-white/40">
+            You haven't added anything
+            to your cart yet. Explore
+            our collection and find
+            something you love.
+          </p>
+
+          <Link
+            to="/shop"
+            className="mt-8 flex items-center gap-3 bg-[#e59a38] px-8 py-4 text-xs font-black uppercase tracking-[0.2em] text-black transition hover:bg-white"
+          >
+            <ArrowLeft size={15} />
+
+            Shop NPG
+          </Link>
+        </div>
+      </main>
+    );
+  }
+
+  // ==========================================
   // CART PAGE
   // ==========================================
 
@@ -138,7 +145,6 @@ const Cart = () => {
         {/* HEADER */}
 
         <div className="mb-12 flex flex-col justify-between gap-5 border-b border-white/10 pb-8 md:flex-row md:items-end">
-
           <div>
             <p className="mb-3 text-[10px] font-bold uppercase tracking-[0.3em] text-[#e59a38]">
               NPG Store
@@ -157,13 +163,13 @@ const Cart = () => {
             </p>
           </div>
 
-          {/* CLEAR CART */}
-
           <button
+            type="button"
             onClick={clearCart}
             className="flex w-fit items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-white/40 transition hover:text-red-400"
           >
             <Trash2 size={14} />
+
             Clear Cart
           </button>
         </div>
@@ -175,7 +181,6 @@ const Cart = () => {
           {/* CART ITEMS */}
 
           <div className="space-y-4">
-
             {cartProducts.map(
               (item) => {
                 const productId =
@@ -237,9 +242,7 @@ const Cart = () => {
 
                               {item.category && (
                                 <p className="mt-1 text-[9px] uppercase tracking-[0.2em] text-white/30">
-                                  {
-                                    item.category
-                                  }
+                                  {item.category}
                                 </p>
                               )}
                             </div>
@@ -247,6 +250,7 @@ const Cart = () => {
                             {/* REMOVE */}
 
                             <button
+                              type="button"
                               onClick={() =>
                                 removeFromCart(
                                   productId
@@ -259,7 +263,6 @@ const Cart = () => {
                                 size={17}
                               />
                             </button>
-
                           </div>
                         </div>
 
@@ -283,6 +286,7 @@ const Cart = () => {
                           <div className="flex items-center border border-white/20">
 
                             <button
+                              type="button"
                               onClick={() =>
                                 decreaseQuantity(
                                   productId
@@ -301,6 +305,7 @@ const Cart = () => {
                             </span>
 
                             <button
+                              type="button"
                               onClick={() =>
                                 increaseQuantity(
                                   productId
@@ -336,7 +341,6 @@ const Cart = () => {
                 );
               }
             )}
-
           </div>
 
           {/* ORDER SUMMARY */}
@@ -348,7 +352,6 @@ const Cart = () => {
             cartCount={getCartCount()}
             clearCart={clearCart}
           />
-
         </div>
       </div>
     </main>

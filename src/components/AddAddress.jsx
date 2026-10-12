@@ -1,9 +1,13 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
+import { MapPin, ArrowLeft, Loader2 } from "lucide-react";
+
+const API_URL = "https://npg-store.vercel.app";
 
 const AddAddress = () => {
   const navigate = useNavigate();
+
   const [loading, setLoading] = useState(false);
 
   const [data, setData] = useState({
@@ -24,202 +28,274 @@ const AddAddress = () => {
     }));
   };
 
-  const onSubmitHandler = (e) => {
+  const onSubmitHandler = async (e) => {
     e.preventDefault();
+
+    if (loading) return;
+
+    const token =
+      localStorage.getItem("npg-token") ||
+      sessionStorage.getItem("npg-token") ||
+      localStorage.getItem("token");
+
+    if (!token) {
+      toast.error("Please log in before saving your address.");
+      navigate("/login");
+      return;
+    }
+
     setLoading(true);
 
-    // Save address temporarily in localStorage
-    localStorage.setItem("npg-address", JSON.stringify(data));
+    try {
+      const response = await fetch(`${API_URL}/api/address/add`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(data),
+      });
 
-    setTimeout(() => {
-      toast.success("Shipping address saved!");
+      const result = await response.json();
 
-      setLoading(false);
+      if (!response.ok || !result.success) {
+        throw new Error(
+          result.message || "Failed to save your address."
+        );
+      }
+
+      // Save the addresses returned by the backend.
+      if (Array.isArray(result.addresses)) {
+        localStorage.setItem(
+          "npg-addresses",
+          JSON.stringify(result.addresses)
+        );
+      } else {
+        // Fallback if the backend doesn't return the address list.
+        const saved = JSON.parse(
+          localStorage.getItem("npg-addresses") || "[]"
+        );
+
+        localStorage.setItem(
+          "npg-addresses",
+          JSON.stringify([
+            {
+              ...data,
+              _id: `address-${Date.now()}`,
+            },
+            ...saved,
+          ])
+        );
+      }
+
+      toast.success("Delivery address saved successfully!");
+
       navigate("/cart");
-    }, 700);
+    } catch (error) {
+      console.error("Add address error:", error);
+
+      toast.error(
+        error.message || "Unable to save address. Please try again."
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
-  return (
-    <div className="min-h-screen bg-[#100704] text-white px-5 sm:px-8 md:px-16 lg:px-24 py-12 md:py-20">
-      <div className="max-w-6xl mx-auto">
+  const inputClass =
+    "w-full rounded-md border border-white/10 bg-[#1a0b07] px-4 py-3 text-white placeholder-gray-500 outline-none transition focus:border-[#e59a38]";
 
+  const labelClass = "mb-2 block text-sm text-gray-300";
+
+  return (
+    <div className="min-h-screen bg-[#100704] px-5 py-12 text-white sm:px-8 md:px-16 md:py-20 lg:px-24">
+      <div className="mx-auto max-w-6xl">
         {/* Header */}
         <div className="mb-10">
-          <p className="text-sm uppercase tracking-[3px] text-[#e59a38] mb-2">
+          <p className="mb-2 text-sm uppercase tracking-[3px] text-[#e59a38]">
             NPG Clothing
           </p>
 
-          <h1 className="text-3xl md:text-4xl font-semibold">
+          <h1 className="text-3xl font-semibold md:text-4xl">
             Shipping{" "}
             <span className="text-[#e59a38]">Address</span>
           </h1>
 
-          <p className="text-gray-400 mt-2 text-sm">
+          <p className="mt-2 text-sm text-gray-400">
             Enter your delivery details to continue with your order.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
-
-          {/* Form */}
+        <div className="grid grid-cols-1 items-start gap-12 lg:grid-cols-2">
+          {/* Address Form */}
           <form onSubmit={onSubmitHandler}>
             <div className="space-y-5">
-
               {/* Full Name */}
               <div>
-                <label className="block text-sm text-gray-300 mb-2">
+                <label htmlFor="fullName" className={labelClass}>
                   Full Name
                 </label>
 
                 <input
+                  id="fullName"
                   type="text"
                   name="fullName"
                   placeholder="Enter your full name"
                   value={data.fullName}
                   onChange={onChangeHandler}
+                  autoComplete="name"
                   required
-                  className="w-full bg-[#1a0b07] border border-white/10 rounded-md px-4 py-3 text-white placeholder-gray-500 outline-none focus:border-[#e59a38] transition"
+                  className={inputClass}
                 />
               </div>
 
               {/* Phone Number */}
               <div>
-                <label className="block text-sm text-gray-300 mb-2">
+                <label htmlFor="phoneNumber" className={labelClass}>
                   Phone Number
                 </label>
 
                 <input
+                  id="phoneNumber"
                   type="tel"
                   name="phoneNumber"
                   placeholder="Enter your phone number"
                   value={data.phoneNumber}
                   onChange={onChangeHandler}
+                  autoComplete="tel"
                   required
-                  className="w-full bg-[#1a0b07] border border-white/10 rounded-md px-4 py-3 text-white placeholder-gray-500 outline-none focus:border-[#e59a38] transition"
+                  className={inputClass}
                 />
               </div>
 
-              {/* Address */}
+              {/* Street Address */}
               <div>
-                <label className="block text-sm text-gray-300 mb-2">
+                <label htmlFor="area" className={labelClass}>
                   Address
                 </label>
 
                 <textarea
+                  id="area"
                   name="area"
                   rows={4}
                   placeholder="House number, street, area..."
                   value={data.area}
                   onChange={onChangeHandler}
+                  autoComplete="street-address"
                   required
-                  className="w-full bg-[#1a0b07] border border-white/10 rounded-md px-4 py-3 text-white placeholder-gray-500 outline-none focus:border-[#e59a38] transition resize-none"
+                  className={`${inputClass} resize-none`}
                 />
               </div>
 
-              {/* City + State */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-
+              {/* City and State */}
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
-                  <label className="block text-sm text-gray-300 mb-2">
+                  <label htmlFor="city" className={labelClass}>
                     City
                   </label>
 
                   <input
+                    id="city"
                     type="text"
                     name="city"
                     placeholder="City"
                     value={data.city}
                     onChange={onChangeHandler}
+                    autoComplete="address-level2"
                     required
-                    className="w-full bg-[#1a0b07] border border-white/10 rounded-md px-4 py-3 text-white placeholder-gray-500 outline-none focus:border-[#e59a38] transition"
+                    className={inputClass}
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm text-gray-300 mb-2">
+                  <label htmlFor="state" className={labelClass}>
                     State
                   </label>
 
                   <input
+                    id="state"
                     type="text"
                     name="state"
                     placeholder="State"
                     value={data.state}
                     onChange={onChangeHandler}
+                    autoComplete="address-level1"
                     required
-                    className="w-full bg-[#1a0b07] border border-white/10 rounded-md px-4 py-3 text-white placeholder-gray-500 outline-none focus:border-[#e59a38] transition"
+                    className={inputClass}
                   />
                 </div>
-
               </div>
 
               {/* Postal Code */}
               <div>
-                <label className="block text-sm text-gray-300 mb-2">
+                <label htmlFor="pincode" className={labelClass}>
                   Postal Code
                 </label>
 
                 <input
+                  id="pincode"
                   type="text"
                   name="pincode"
                   placeholder="Postal code"
                   value={data.pincode}
                   onChange={onChangeHandler}
+                  autoComplete="postal-code"
                   required
-                  className="w-full bg-[#1a0b07] border border-white/10 rounded-md px-4 py-3 text-white placeholder-gray-500 outline-none focus:border-[#e59a38] transition"
+                  className={inputClass}
                 />
               </div>
 
               {/* Buttons */}
-              <div className="flex flex-col sm:flex-row gap-3 pt-3">
-
+              <div className="flex flex-col gap-3 pt-3 sm:flex-row">
                 <button
                   type="button"
                   onClick={() => navigate("/cart")}
-                  className="w-full sm:w-auto px-8 py-3 border border-white/20 text-gray-300 hover:border-[#e59a38] hover:text-[#e59a38] transition rounded-md"
+                  disabled={loading}
+                  className="flex w-full items-center justify-center gap-2 rounded-md border border-white/20 px-8 py-3 text-gray-300 transition hover:border-[#e59a38] hover:text-[#e59a38] disabled:opacity-50 sm:w-auto"
                 >
+                  <ArrowLeft size={16} />
                   Back to Cart
                 </button>
 
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full sm:w-auto px-8 py-3 bg-[#e59a38] text-black font-medium uppercase tracking-wide hover:bg-[#f0aa4d] transition rounded-md disabled:opacity-50"
+                  className="flex w-full items-center justify-center gap-2 rounded-md bg-[#e59a38] px-8 py-3 font-medium uppercase tracking-wide text-black transition hover:bg-[#f0aa4d] disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
                 >
-                  {loading ? "Saving..." : "Save Address"}
+                  {loading ? (
+                    <>
+                      <Loader2 size={18} className="animate-spin" />
+                      Saving Address...
+                    </>
+                  ) : (
+                    "Save Address"
+                  )}
                 </button>
-
               </div>
             </div>
           </form>
 
           {/* Right Side */}
-          <div className="hidden lg:flex min-h-[520px] bg-[#1a0b07] border border-white/10 rounded-lg items-center justify-center p-10">
-
+          <div className="hidden min-h-[520px] items-center justify-center rounded-lg border border-white/10 bg-[#1a0b07] p-10 lg:flex">
             <div className="text-center">
-
-              <div className="w-20 h-20 mx-auto mb-6 rounded-full border border-[#e59a38] flex items-center justify-center">
-                <span className="text-3xl text-[#e59a38]">
-                  ⌖
-                </span>
+              <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full border border-[#e59a38]">
+                <MapPin size={36} className="text-[#e59a38]" />
               </div>
 
-              <h2 className="text-2xl font-semibold mb-3">
+              <h2 className="mb-3 text-2xl font-semibold">
                 Where should we deliver?
               </h2>
 
-              <p className="text-gray-400 max-w-sm leading-7">
-                Add your delivery address so we can get your NPG order
-                to you safely and conveniently.
+              <p className="mx-auto max-w-sm leading-7 text-gray-400">
+                Add your delivery address so we can get your NPG
+                order to you safely and conveniently.
               </p>
 
-              <div className="mt-8 text-[#e59a38] text-sm tracking-[3px] uppercase">
+              <div className="mt-8 text-sm uppercase tracking-[3px] text-[#e59a38]">
                 Nothing Pass God
               </div>
-
             </div>
           </div>
-
         </div>
       </div>
     </div>

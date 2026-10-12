@@ -13,6 +13,10 @@ export const StoreContext = createContext(null);
 const StoreContextProvider = ({ children }) => {
   const navigate = useNavigate();
 
+  // ==========================================
+  // BACKEND URL
+  // ==========================================
+
   const url = "https://npg-store.vercel.app";
 
   // ==========================================
@@ -26,11 +30,13 @@ const StoreContextProvider = ({ children }) => {
   const [admin, setAdmin] = useState(null);
 
   const [loading, setLoading] = useState(true);
-  const [productsLoading, setProductsLoading] = useState(true);
-  const [cartLoading, setCartLoading] = useState(false);
+  const [productsLoading, setProductsLoading] =
+    useState(true);
+  const [cartLoading, setCartLoading] =
+    useState(false);
 
   // ==========================================
-  // GET AUTH TOKEN
+  // GET STORED TOKEN
   // ==========================================
 
   const getStoredToken = () => {
@@ -42,87 +48,41 @@ const StoreContextProvider = ({ children }) => {
   };
 
   // ==========================================
-  // FETCH PRODUCTS
+  // CONVERT BACKEND CART
   // ==========================================
 
-  const fetchProducts = useCallback(async () => {
-    try {
-      setProductsLoading(true);
+  /*
+    Backend:
 
-      const res = await axios.get(
-        `${url}/api/product/getall`
-      );
-
-      if (res.data?.success) {
-        setProducts(res.data.products || []);
-      } else {
-        setProducts([]);
-
-        toast.error(
-          res.data?.error || "No products found"
-        );
+    [
+      {
+        product: {
+          _id: "123"
+        },
+        quantity: 2
       }
-    } catch (error) {
-      console.error(
-        "❌ Product fetch error:",
-        error
-      );
+    ]
 
-      setProducts([]);
+    Frontend:
 
-      toast.error("Failed to load products");
-    } finally {
-      setProductsLoading(false);
+    {
+      "123": 2
     }
-  }, [url]);
-
-  // ==========================================
-  // GET PRODUCT PRICE
-  // ==========================================
-
-  const getProductPrice = useCallback(
-    (productId) => {
-      const product = products.find(
-        (item) =>
-          String(item._id) === String(productId)
-      );
-
-      if (!product) return 0;
-
-      return Number(
-        product.offerPrice ??
-          product.price ??
-          0
-      );
-    },
-    [products]
-  );
-
-  // ==========================================
-  // CONVERT BACKEND CART TO OBJECT
-  //
-  // Backend:
-  // cartItems: [
-  //   {
-  //     product: {...},
-  //     quantity: 2
-  //   }
-  // ]
-  //
-  // Frontend:
-  // {
-  //   "productId": 2
-  // }
-  // ==========================================
+  */
 
   const convertBackendCart = useCallback(
     (items = []) => {
       const formattedCart = {};
 
+      if (!Array.isArray(items)) {
+        return formattedCart;
+      }
+
       items.forEach((item) => {
         const productId =
-          item.product?._id ||
-          item.product;
+          item?.product?._id ||
+          item?.product?.id ||
+          item?.product;
 
         if (productId) {
           formattedCart[String(productId)] =
@@ -136,8 +96,78 @@ const StoreContextProvider = ({ children }) => {
   );
 
   // ==========================================
-  // GET CART FROM BACKEND
-  // /api/cart/getall
+  // FETCH PRODUCTS
+  // ==========================================
+
+  const fetchProducts = useCallback(async () => {
+    try {
+      setProductsLoading(true);
+
+      const response = await axios.get(
+        `${url}/api/product/getall`
+      );
+
+      console.log(
+        "PRODUCT RESPONSE:",
+        response.data
+      );
+
+      if (response.data?.success) {
+        setProducts(
+          response.data.products || []
+        );
+      } else {
+        setProducts([]);
+
+        toast.error(
+          response.data?.message ||
+            "No products found"
+        );
+      }
+    } catch (error) {
+      console.error(
+        "❌ FETCH PRODUCTS ERROR:",
+        error.response?.data ||
+          error.message
+      );
+
+      setProducts([]);
+
+      toast.error(
+        "Failed to load products"
+      );
+    } finally {
+      setProductsLoading(false);
+    }
+  }, [url]);
+
+  // ==========================================
+  // GET PRODUCT PRICE
+  // ==========================================
+
+  const getProductPrice = useCallback(
+    (productId) => {
+      const product = products.find(
+        (item) =>
+          String(item._id) ===
+          String(productId)
+      );
+
+      if (!product) {
+        return 0;
+      }
+
+      return Number(
+        product.offerPrice ??
+          product.price ??
+          0
+      );
+    },
+    [products]
+  );
+
+  // ==========================================
+  // GET CART
   // ==========================================
 
   const fetchCart = useCallback(
@@ -146,29 +176,45 @@ const StoreContextProvider = ({ children }) => {
         authToken || getStoredToken();
 
       if (!activeToken) {
+        setCartItems({});
         return;
       }
 
       try {
         setCartLoading(true);
 
-        const res = await axios.get(
+        console.log("🛒 FETCHING CART...");
+
+        const response = await axios.get(
           `${url}/api/cart/getall`,
           {
             headers: {
-              Authorization: `Bearer ${activeToken}`,
+              Authorization:
+                `Bearer ${activeToken}`,
             },
           }
         );
 
-        if (res.data?.success) {
-          const backendCart =
-            res.data.cart?.cartItems ||
-            res.data.cartItems ||
+        console.log(
+          "🛒 CART RESPONSE:",
+          response.data
+        );
+
+        if (response.data?.success) {
+          const backendItems =
+            response.data?.cart?.cartItems ||
+            response.data?.cartItems ||
             [];
 
           const formattedCart =
-            convertBackendCart(backendCart);
+            convertBackendCart(
+              backendItems
+            );
+
+          console.log(
+            "🛒 FORMATTED CART:",
+            formattedCart
+          );
 
           setCartItems(formattedCart);
 
@@ -176,19 +222,21 @@ const StoreContextProvider = ({ children }) => {
             "cartItems",
             JSON.stringify(formattedCart)
           );
+        } else {
+          setCartItems({});
         }
       } catch (error) {
-        // A new user may not have a cart yet.
-        if (
-          error.response?.status !== 404
-        ) {
-          console.error(
-            "❌ Fetch cart error:",
-            error
-          );
-        }
+        console.error(
+          "❌ FETCH CART ERROR:",
+          error.response?.data ||
+            error.message
+        );
 
-        setCartItems({});
+        if (
+          error.response?.status === 401
+        ) {
+          setCartItems({});
+        }
       } finally {
         setCartLoading(false);
       }
@@ -203,27 +251,57 @@ const StoreContextProvider = ({ children }) => {
   useEffect(() => {
     const initialize = async () => {
       try {
-        // Load guest/local cart first
+        setLoading(true);
+
+        // ------------------------------
+        // LOCAL CART
+        // ------------------------------
+
         const storedCart =
-          localStorage.getItem("cartItems");
+          localStorage.getItem(
+            "cartItems"
+          );
 
         if (storedCart) {
           try {
-            setCartItems(
-              JSON.parse(storedCart)
+            const parsedCart =
+              JSON.parse(storedCart);
+
+            if (
+              parsedCart &&
+              typeof parsedCart ===
+                "object"
+            ) {
+              setCartItems(parsedCart);
+            }
+          } catch (error) {
+            console.error(
+              "LOCAL CART ERROR:",
+              error
             );
-          } catch {
+
             setCartItems({});
           }
         }
 
-        // Load authentication
+        // ------------------------------
+        // TOKEN
+        // ------------------------------
+
         const storedToken =
           getStoredToken();
 
+        // ------------------------------
+        // USER
+        // ------------------------------
+
         const storedUser =
-          localStorage.getItem("npg-user") ||
-          sessionStorage.getItem("npg-user");
+          localStorage.getItem(
+            "npg-user"
+          ) ||
+          sessionStorage.getItem(
+            "npg-user"
+          );
 
         if (storedToken) {
           setToken(storedToken);
@@ -235,25 +313,34 @@ const StoreContextProvider = ({ children }) => {
               );
             } catch (error) {
               console.error(
-                "Failed to parse user:",
+                "USER PARSE ERROR:",
                 error
               );
             }
           }
 
-          // Load backend cart
-          await fetchCart(storedToken);
+          // ----------------------------
+          // MONGODB CART
+          // ----------------------------
+
+          await fetchCart(
+            storedToken
+          );
         }
+
+        // ------------------------------
+        // PRODUCTS
+        // ------------------------------
+
+        await fetchProducts();
       } catch (error) {
         console.error(
-          "❌ Store initialization error:",
+          "❌ STORE INITIALIZATION ERROR:",
           error
         );
       } finally {
         setLoading(false);
       }
-
-      fetchProducts();
     };
 
     initialize();
@@ -271,7 +358,7 @@ const StoreContextProvider = ({ children }) => {
       );
     } catch (error) {
       console.error(
-        "Failed to save cart:",
+        "SAVE CART ERROR:",
         error
       );
     }
@@ -282,46 +369,69 @@ const StoreContextProvider = ({ children }) => {
   // ==========================================
 
   const fetchUserData = async (
-    authToken
+    authToken = null
   ) => {
     try {
       const activeToken =
         authToken || getStoredToken();
 
-      if (!activeToken) return;
+      if (!activeToken) {
+        return;
+      }
 
-      const res = await axios.get(
+      const response = await axios.get(
         `${url}/api/user/me`,
         {
           headers: {
-            Authorization: `Bearer ${activeToken}`,
+            Authorization:
+              `Bearer ${activeToken}`,
           },
         }
       );
 
-      if (res.data?.success === false) {
+      console.log(
+        "USER RESPONSE:",
+        response.data
+      );
+
+      if (
+        response.data?.success ===
+        false
+      ) {
         throw new Error(
-          res.data?.message ||
+          response.data?.message ||
             "Failed to fetch user"
         );
       }
 
       const userData =
-        res.data.user;
+        response.data?.user;
 
-      setUser(userData);
+      if (userData) {
+        setUser(userData);
 
-      localStorage.setItem(
-        "npg-user",
-        JSON.stringify(userData)
-      );
+        if (
+          localStorage.getItem(
+            "npg-token"
+          )
+        ) {
+          localStorage.setItem(
+            "npg-user",
+            JSON.stringify(userData)
+          );
+        } else {
+          sessionStorage.setItem(
+            "npg-user",
+            JSON.stringify(userData)
+          );
+        }
+      }
     } catch (error) {
       console.error(
-        "❌ Failed to fetch user:",
-        error
+        "❌ FETCH USER ERROR:",
+        error.response?.data ||
+          error.message
       );
-
-      logout();
     }
   };
 
@@ -334,26 +444,44 @@ const StoreContextProvider = ({ children }) => {
     userData,
     rememberMe = true
   ) => {
-    const storage = rememberMe
-      ? localStorage
-      : sessionStorage;
+    try {
+      const storage = rememberMe
+        ? localStorage
+        : sessionStorage;
 
-    storage.setItem(
-      "npg-token",
-      authToken
-    );
+      storage.setItem(
+        "npg-token",
+        authToken
+      );
 
-    storage.setItem(
-      "npg-user",
-      JSON.stringify(userData)
-    );
+      storage.setItem(
+        "npg-user",
+        JSON.stringify(userData)
+      );
 
-    setToken(authToken);
-    setUser(userData);
-    setAdmin(null);
+      setToken(authToken);
+      setUser(userData);
+      setAdmin(null);
 
-    // Load user's backend cart
-    await fetchCart(authToken);
+      // IMPORTANT
+      // Fetch MongoDB cart immediately
+      await fetchCart(authToken);
+
+      window.dispatchEvent(
+        new Event(
+          "npg-auth-change"
+        )
+      );
+
+      return true;
+    } catch (error) {
+      console.error(
+        "❌ LOGIN ERROR:",
+        error
+      );
+
+      return false;
+    }
   };
 
   // ==========================================
@@ -387,7 +515,9 @@ const StoreContextProvider = ({ children }) => {
     setCartItems({});
 
     window.dispatchEvent(
-      new Event("npg-auth-change")
+      new Event(
+        "npg-auth-change"
+      )
     );
 
     navigate("/login");
@@ -397,21 +527,24 @@ const StoreContextProvider = ({ children }) => {
   // UPDATE USER
   // ==========================================
 
-  const updateUser = (updatedUser) => {
+  const updateUser = (
+    updatedUser
+  ) => {
     setUser(updatedUser);
 
-    const activeToken =
-      getStoredToken();
-
     if (
-      localStorage.getItem("npg-token")
+      localStorage.getItem(
+        "npg-token"
+      )
     ) {
       localStorage.setItem(
         "npg-user",
         JSON.stringify(updatedUser)
       );
     } else if (
-      sessionStorage.getItem("npg-token")
+      sessionStorage.getItem(
+        "npg-token"
+      )
     ) {
       sessionStorage.setItem(
         "npg-user",
@@ -422,68 +555,151 @@ const StoreContextProvider = ({ children }) => {
 
   // ==========================================
   // ADD TO CART
-  // POST /api/cart/add
   // ==========================================
 
-  const addToCart = async (productId) => {
-    if (!productId) return;
+  const addToCart = async (
+    productId
+  ) => {
+    if (!productId) {
+      toast.error(
+        "Product ID is missing."
+      );
 
-    const productKey =
-      String(productId);
-
-    // Optimistic frontend update
-    setCartItems((current) => ({
-      ...current,
-      [productKey]:
-        Number(current[productKey] || 0) +
-        1,
-    }));
+      return false;
+    }
 
     const activeToken =
       token || getStoredToken();
 
-    // Guest cart
+    // User must be logged in
     if (!activeToken) {
-      return;
+      toast.error(
+        "Please login before adding products."
+      );
+
+      navigate("/login");
+
+      return false;
     }
 
     try {
-      const res = await axios.post(
-        `${url}/api/cart/add`,
-        {
-          productId,
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${activeToken}`,
-          },
-        }
+      setCartLoading(true);
+
+      console.log(
+        "================================"
       );
 
-      if (res.data?.success) {
-        const backendItems =
-          res.data.cartItems || [];
+      console.log(
+        "🛒 ADDING PRODUCT:",
+        productId
+      );
 
-        const formattedCart =
-          convertBackendCart(
-            backendItems
-          );
+      console.log(
+        "🔐 TOKEN:",
+        activeToken
+          ? "TOKEN FOUND"
+          : "NO TOKEN"
+      );
 
-        setCartItems(formattedCart);
+      console.log(
+        "================================"
+      );
+
+      const response =
+        await axios.post(
+          `${url}/api/cart/add`,
+          {
+            productId:
+              String(productId),
+          },
+          {
+            headers: {
+              Authorization:
+                `Bearer ${activeToken}`,
+              "Content-Type":
+                "application/json",
+            },
+          }
+        );
+
+      console.log(
+        "🛒 ADD TO CART RESPONSE:",
+        response.data
+      );
+
+      if (!response.data?.success) {
+        toast.error(
+          response.data?.message ||
+            "Failed to add product"
+        );
+
+        return false;
       }
+
+      // Get backend cart
+      const backendItems =
+        response.data?.cartItems ||
+        response.data?.cart?.cartItems ||
+        [];
+
+      console.log(
+        "🛒 BACKEND ITEMS:",
+        backendItems
+      );
+
+      // Convert backend array
+      const formattedCart =
+        convertBackendCart(
+          backendItems
+        );
+
+      console.log(
+        "🛒 FRONTEND CART:",
+        formattedCart
+      );
+
+      // Update React state
+      setCartItems(
+        formattedCart
+      );
+
+      // Save locally
+      localStorage.setItem(
+        "cartItems",
+        JSON.stringify(
+          formattedCart
+        )
+      );
+
+      return true;
     } catch (error) {
       console.error(
-        "❌ Add to cart error:",
-        error
+        "❌ ADD TO CART ERROR:",
+        error.response?.data ||
+          error.message
       );
 
-      // Reload backend cart if request failed
-      await fetchCart(activeToken);
+      if (
+        error.response?.status ===
+        401
+      ) {
+        toast.error(
+          "Your session has expired. Please login again."
+        );
+
+        logout();
+
+        return false;
+      }
 
       toast.error(
         error.response?.data?.message ||
-          "Failed to add item to cart"
+          "Failed to add product to cart"
       );
+
+      return false;
+    } finally {
+      setCartLoading(false);
     }
   };
 
@@ -494,170 +710,236 @@ const StoreContextProvider = ({ children }) => {
   const increaseQuantity = async (
     productId
   ) => {
-    await addToCart(productId);
+    return await addToCart(
+      productId
+    );
   };
 
   // ==========================================
   // DECREASE QUANTITY
-  // POST /api/cart/remove
   // ==========================================
 
   const decreaseQuantity = async (
     productId
   ) => {
-    if (!productId) return;
-
-    const productKey =
-      String(productId);
-
-    const currentQuantity =
-      Number(
-        cartItems[productKey] || 0
-      );
-
-    if (currentQuantity <= 0) {
-      return;
+    if (!productId) {
+      return false;
     }
-
-    // Optimistic frontend update
-    setCartItems((current) => {
-      const updated = {
-        ...current,
-      };
-
-      if (
-        Number(updated[productKey]) <= 1
-      ) {
-        delete updated[productKey];
-      } else {
-        updated[productKey] =
-          Number(updated[productKey]) -
-          1;
-      }
-
-      return updated;
-    });
 
     const activeToken =
       token || getStoredToken();
 
     // Guest cart
     if (!activeToken) {
-      return;
-    }
+      setCartItems(
+        (current) => {
+          const updated = {
+            ...current,
+          };
 
-    try {
-      const res = await axios.post(
-        `${url}/api/cart/remove`,
-        {
-          productId,
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${activeToken}`,
-          },
+          const key =
+            String(productId);
+
+          const quantity =
+            Number(
+              updated[key] || 0
+            );
+
+          if (quantity <= 1) {
+            delete updated[key];
+          } else {
+            updated[key] =
+              quantity - 1;
+          }
+
+          return updated;
         }
       );
 
-      if (res.data?.success) {
-        const backendItems =
-          res.data.cartItems || [];
+      return true;
+    }
 
-        const formattedCart =
-          convertBackendCart(
-            backendItems
-          );
+    try {
+      setCartLoading(true);
 
-        setCartItems(formattedCart);
-      }
-    } catch (error) {
-      console.error(
-        "❌ Remove from cart error:",
-        error
+      const response =
+        await axios.post(
+          `${url}/api/cart/remove`,
+          {
+            productId:
+              String(productId),
+          },
+          {
+            headers: {
+              Authorization:
+                `Bearer ${activeToken}`,
+              "Content-Type":
+                "application/json",
+            },
+          }
+        );
+
+      console.log(
+        "🛒 DECREASE RESPONSE:",
+        response.data
       );
 
-      await fetchCart(activeToken);
+      if (!response.data?.success) {
+        toast.error(
+          response.data?.message ||
+            "Failed to update cart"
+        );
+
+        return false;
+      }
+
+      const backendItems =
+        response.data?.cartItems ||
+        response.data?.cart?.cartItems ||
+        [];
+
+      const formattedCart =
+        convertBackendCart(
+          backendItems
+        );
+
+      setCartItems(
+        formattedCart
+      );
+
+      return true;
+    } catch (error) {
+      console.error(
+        "❌ DECREASE ERROR:",
+        error.response?.data ||
+          error.message
+      );
 
       toast.error(
         error.response?.data?.message ||
           "Failed to update cart"
       );
+
+      await fetchCart(
+        activeToken
+      );
+
+      return false;
+    } finally {
+      setCartLoading(false);
     }
   };
 
   // ==========================================
-  // REMOVE ENTIRE ITEM
+  // REMOVE ENTIRE PRODUCT
   // ==========================================
 
-  const removeFromCart = async (
-    productId
-  ) => {
-    if (!productId) return;
-
-    const productKey =
-      String(productId);
-
-    const quantity =
-      Number(
-        cartItems[productKey] || 0
-      );
-
-    if (quantity <= 0) return;
-
-    const activeToken =
-      token || getStoredToken();
-
-    // Guest cart
-    if (!activeToken) {
-      setCartItems((current) => {
-        const updated = {
-          ...current,
-        };
-
-        delete updated[productKey];
-
-        return updated;
-      });
-
-      return;
-    }
-
-    try {
-      // Backend remove endpoint removes ONE
-      // quantity at a time.
-      for (
-        let i = 0;
-        i < quantity;
-        i++
-      ) {
-        await axios.post(
-          `${url}/api/cart/remove`,
-          {
-            productId,
-          },
-          {
-            headers: {
-              Authorization: `Bearer ${activeToken}`,
-            },
-          }
-        );
+  const removeFromCart =
+    async (productId) => {
+      if (!productId) {
+        return false;
       }
 
-      await fetchCart(activeToken);
-    } catch (error) {
-      console.error(
-        "❌ Remove item error:",
-        error
-      );
+      const key =
+        String(productId);
 
-      await fetchCart(activeToken);
+      const quantity =
+        Number(
+          cartItems[key] || 0
+        );
 
-      toast.error(
-        error.response?.data?.message ||
-          "Failed to remove item"
-      );
-    }
-  };
+      if (quantity <= 0) {
+        return false;
+      }
+
+      const activeToken =
+        token || getStoredToken();
+
+      // Guest cart
+      if (!activeToken) {
+        setCartItems(
+          (current) => {
+            const updated = {
+              ...current,
+            };
+
+            delete updated[key];
+
+            return updated;
+          }
+        );
+
+        return true;
+      }
+
+      try {
+        setCartLoading(true);
+
+        /*
+          Your backend /remove endpoint
+          removes ONE quantity at a time.
+
+          Example:
+          quantity = 3
+
+          Call remove 3 times.
+        */
+
+        for (
+          let i = 0;
+          i < quantity;
+          i++
+        ) {
+          const response =
+            await axios.post(
+              `${url}/api/cart/remove`,
+              {
+                productId:
+                  String(productId),
+              },
+              {
+                headers: {
+                  Authorization:
+                    `Bearer ${activeToken}`,
+                  "Content-Type":
+                    "application/json",
+                },
+              }
+            );
+
+          if (
+            !response.data?.success
+          ) {
+            break;
+          }
+        }
+
+        await fetchCart(
+          activeToken
+        );
+
+        return true;
+      } catch (error) {
+        console.error(
+          "❌ REMOVE PRODUCT ERROR:",
+          error.response?.data ||
+            error.message
+        );
+
+        toast.error(
+          error.response?.data?.message ||
+            "Failed to remove item"
+        );
+
+        await fetchCart(
+          activeToken
+        );
+
+        return false;
+      } finally {
+        setCartLoading(false);
+      }
+    };
 
   // ==========================================
   // CLEAR CART
@@ -679,9 +961,12 @@ const StoreContextProvider = ({ children }) => {
     return Object.values(
       cartItems
     ).reduce(
-      (total, quantity) =>
-        total +
-        Number(quantity || 0),
+      (total, quantity) => {
+        return (
+          total +
+          Number(quantity || 0)
+        );
+      },
       0
     );
   };
@@ -694,9 +979,14 @@ const StoreContextProvider = ({ children }) => {
     return Object.entries(
       cartItems
     ).reduce(
-      (total, [productId, quantity]) => {
+      (
+        total,
+        [productId, quantity]
+      ) => {
         const price =
-          getProductPrice(productId);
+          getProductPrice(
+            productId
+          );
 
         return (
           total +
@@ -735,7 +1025,6 @@ const StoreContextProvider = ({ children }) => {
     fetchUserData,
 
     fetchProducts,
-
     fetchCart,
 
     addToCart,
@@ -747,7 +1036,6 @@ const StoreContextProvider = ({ children }) => {
 
     getCartCount,
     getCartAmount,
-
     getProductPrice,
 
     setToken,

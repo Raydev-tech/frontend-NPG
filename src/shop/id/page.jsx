@@ -76,48 +76,58 @@ const Product = () => {
   // ADD TO CART
   // ==========================================
 
-  const handleAddToCart = (product = productData) => {
-    if (!product) {
-      toast.error("Product not found.");
-      return false;
-    }
+  const handleAddToCart = async (
+  product = productData
+) => {
+  if (!product) {
+    toast.error("Product not found.");
+    return false;
+  }
 
-    // Check stock
-    if (product.inStock === false) {
-      toast.error(
-        "🚫 This product is out of stock!",
+  if (product.inStock === false) {
+    toast.error(
+      "This product is out of stock!"
+    );
+    return false;
+  }
+
+  if (!addToCart) {
+    toast.error(
+      "Cart is not available."
+    );
+    return false;
+  }
+
+  try {
+    const success =
+      await addToCart(product._id);
+
+    if (success) {
+      toast.success(
+        "Product added to cart!",
         {
           position: "top-center",
-          duration: 2500,
+          duration: 2000,
         }
       );
 
-      return false;
+      return true;
     }
 
-    // Check cart function
-    if (!addToCart) {
-      toast.error(
-        "Unable to add product to cart.",
-        {
-          position: "top-center",
-          duration: 2500,
-        }
-      );
+    return false;
+  } catch (error) {
+    console.error(
+      "ADD TO CART ERROR:",
+      error
+    );
 
-      return false;
-    }
+    toast.error(
+      "Unable to add product to cart."
+    );
 
-    // Add using MongoDB _id
-    addToCart(product._id);
-
-    toast.success("Added to cart!", {
-      position: "top-center",
-      duration: 2000,
-    });
-
-    return true;
-  };
+    return false;
+  }
+};
 
   // ==========================================
   // BUY NOW
