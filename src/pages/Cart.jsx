@@ -29,6 +29,7 @@ const Cart = () => {
   // ==========================================
 
   const cartProducts = Object.entries(
+<<<<<<< HEAD
     cartItems || {}
   )
     .map(
@@ -51,12 +52,31 @@ const Cart = () => {
         };
       }
     )
+=======
+    cartItems
+  )
+    .map(([productId, quantity]) => {
+      const product = products.find(
+        (item) =>
+          String(item._id) ===
+          String(productId)
+      );
+
+      if (!product) return null;
+
+      return {
+        ...product,
+        quantity: Number(quantity || 1),
+      };
+    })
+>>>>>>> 5028b29d645aa6ea009c79d42fc9b1eaa3c340c8
     .filter(Boolean);
 
   // ==========================================
   // CALCULATIONS
   // ==========================================
 
+<<<<<<< HEAD
   const subtotal =
     getCartAmount();
 
@@ -88,12 +108,24 @@ const Cart = () => {
       </main>
     );
   }
+=======
+  const subtotal = getCartAmount();
+
+  // Your NPG shipping fee
+  const shipping = subtotal > 0 ? 1500 : 0;
+
+  const total = subtotal + shipping;
+>>>>>>> 5028b29d645aa6ea009c79d42fc9b1eaa3c340c8
 
   // ==========================================
   // EMPTY CART
   // ==========================================
 
   if (
+<<<<<<< HEAD
+=======
+    !cartLoading &&
+>>>>>>> 5028b29d645aa6ea009c79d42fc9b1eaa3c340c8
     cartProducts.length === 0
   ) {
     return (
@@ -115,10 +147,17 @@ const Cart = () => {
           </h1>
 
           <p className="mt-5 max-w-md text-sm leading-7 text-white/40">
+<<<<<<< HEAD
             You haven't added anything
             to your cart yet. Explore
             our collection and find
             something you love.
+=======
+            You haven't added anything to
+            your cart yet. Explore our
+            collection and find something
+            you love.
+>>>>>>> 5028b29d645aa6ea009c79d42fc9b1eaa3c340c8
           </p>
 
           <Link
@@ -135,6 +174,29 @@ const Cart = () => {
   }
 
   // ==========================================
+  // LOADING
+  // ==========================================
+
+  if (cartLoading) {
+    return (
+      <main className="min-h-screen bg-[#100704] px-5 pb-20 pt-32 text-white">
+        <div className="flex min-h-[60vh] items-center justify-center">
+          <div className="flex items-center gap-3 text-[#e59a38]">
+            <Loader2
+              size={22}
+              className="animate-spin"
+            />
+
+            <span className="text-xs font-bold uppercase tracking-[0.2em]">
+              Loading Cart...
+            </span>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  // ==========================================
   // CART PAGE
   // ==========================================
 
@@ -143,6 +205,11 @@ const Cart = () => {
       <div className="mx-auto max-w-7xl">
 
         {/* HEADER */}
+<<<<<<< HEAD
+=======
+
+        <div className="mb-12 flex flex-col justify-between gap-5 border-b border-white/10 pb-8 md:flex-row md:items-end">
+>>>>>>> 5028b29d645aa6ea009c79d42fc9b1eaa3c340c8
 
         <div className="mb-12 flex flex-col justify-between gap-5 border-b border-white/10 pb-8 md:flex-row md:items-end">
           <div>
@@ -163,6 +230,11 @@ const Cart = () => {
             </p>
           </div>
 
+<<<<<<< HEAD
+=======
+          {/* CLEAR CART */}
+
+>>>>>>> 5028b29d645aa6ea009c79d42fc9b1eaa3c340c8
           <button
             type="button"
             onClick={clearCart}
@@ -181,6 +253,44 @@ const Cart = () => {
           {/* CART ITEMS */}
 
           <div className="space-y-4">
+            {cartProducts.map(
+              (item) => {
+                const productId =
+                  item._id;
+
+<<<<<<< HEAD
+                const image =
+                  Array.isArray(
+                    item.image
+                  )
+                    ? item.image[0]
+                    : item.image;
+
+                const quantity =
+                  Number(
+                    item.quantity || 1
+                  );
+
+                const price =
+                  Number(
+                    item.offerPrice ??
+                      item.price ??
+                      0
+                  );
+
+                const itemTotal =
+                  price * quantity;
+
+                return (
+                  <div
+                    key={productId}
+                    className="border border-white/10 bg-[#140806] p-4 md:p-5"
+                  >
+                    <div className="flex gap-5">
+
+                      {/* IMAGE */}
+
+=======
             {cartProducts.map(
               (item) => {
                 const productId =
@@ -217,6 +327,7 @@ const Cart = () => {
 
                       {/* IMAGE */}
 
+>>>>>>> 5028b29d645aa6ea009c79d42fc9b1eaa3c340c8
                       <div className="h-32 w-24 flex-shrink-0 overflow-hidden bg-[#1a0b07] md:h-40 md:w-32">
                         <img
                           src={image}
@@ -242,7 +353,13 @@ const Cart = () => {
 
                               {item.category && (
                                 <p className="mt-1 text-[9px] uppercase tracking-[0.2em] text-white/30">
+<<<<<<< HEAD
                                   {item.category}
+=======
+                                  {
+                                    item.category
+                                  }
+>>>>>>> 5028b29d645aa6ea009c79d42fc9b1eaa3c340c8
                                 </p>
                               )}
                             </div>
@@ -250,7 +367,10 @@ const Cart = () => {
                             {/* REMOVE */}
 
                             <button
+<<<<<<< HEAD
                               type="button"
+=======
+>>>>>>> 5028b29d645aa6ea009c79d42fc9b1eaa3c340c8
                               onClick={() =>
                                 removeFromCart(
                                   productId
@@ -263,6 +383,10 @@ const Cart = () => {
                                 size={17}
                               />
                             </button>
+<<<<<<< HEAD
+=======
+
+>>>>>>> 5028b29d645aa6ea009c79d42fc9b1eaa3c340c8
                           </div>
                         </div>
 
@@ -286,7 +410,10 @@ const Cart = () => {
                           <div className="flex items-center border border-white/20">
 
                             <button
+<<<<<<< HEAD
                               type="button"
+=======
+>>>>>>> 5028b29d645aa6ea009c79d42fc9b1eaa3c340c8
                               onClick={() =>
                                 decreaseQuantity(
                                   productId
@@ -305,7 +432,10 @@ const Cart = () => {
                             </span>
 
                             <button
+<<<<<<< HEAD
                               type="button"
+=======
+>>>>>>> 5028b29d645aa6ea009c79d42fc9b1eaa3c340c8
                               onClick={() =>
                                 increaseQuantity(
                                   productId
@@ -341,6 +471,10 @@ const Cart = () => {
                 );
               }
             )}
+<<<<<<< HEAD
+=======
+
+>>>>>>> 5028b29d645aa6ea009c79d42fc9b1eaa3c340c8
           </div>
 
           {/* ORDER SUMMARY */}
